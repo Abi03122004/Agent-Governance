@@ -1,0 +1,216 @@
+/* Design System Tokens and Core Styles for Agent Governance Platform */
+:root {
+  --bg-primary: #080B10;
+  --bg-secondary: #0D121B;
+  --bg-card: rgba(18, 24, 38, 0.7);
+  --bg-card-hover: rgba(26, 35, 54, 0.85);
+  --bg-glass: rgba(15, 23, 42, 0.65);
+  
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-focus: rgba(0, 240, 255, 0.4);
+  --border-accent: rgba(56, 189, 248, 0.2);
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  
+  --accent-cyan: #00F0FF;
+  --accent-blue: #3B82F6;
+  --accent-indigo: #6366F1;
+  
+  /* Decision Status Tokens */
+  --status-allow-fg: #10B981;
+  --status-allow-bg: rgba(16, 185, 129, 0.12);
+  --status-allow-border: rgba(16, 185, 129, 0.3);
+
+  --status-block-fg: #F43F5E;
+  --status-block-bg: rgba(244, 63, 94, 0.12);
+  --status-block-border: rgba(244, 63, 94, 0.3);
+
+  --status-approval-fg: #F59E0B;
+  --status-approval-bg: rgba(245, 158, 11, 0.12);
+  --status-approval-border: rgba(245, 158, 11, 0.3);
+
+  --status-suspend-fg: #A855F7;
+  --status-suspend-bg: rgba(168, 85, 247, 0.12);
+  --status-suspend-border: rgba(168, 85, 247, 0.3);
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace, ui-monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism card panel */
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel:hover {
+  border-color: var(--border-accent);
+}
+
+/* Decision Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.badge-allow {
+  color: var(--status-allow-fg);
+  background: var(--status-allow-bg);
+  border: 1px solid var(--status-allow-border);
+}
+
+.badge-block {
+  color: var(--status-block-fg);
+  background: var(--status-block-bg);
+  border: 1px solid var(--status-block-border);
+}
+
+.badge-approval {
+  color: var(--status-approval-fg);
+  background: var(--status-approval-bg);
+  border: 1px solid var(--status-approval-border);
+}
+
+.badge-suspend {
+  color: var(--status-suspend-fg);
+  background: var(--status-suspend-bg);
+  border: 1px solid var(--status-suspend-border);
+}
+
+/* Pulsing Status Dot */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.status-dot-active {
+  background: #10B981;
+  box-shadow: 0 0 10px #10B981;
+}
+
+.status-dot-pulse::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.5;
+  animation: pulse-ring 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #00F0FF 0%, #0070F3 100%);
+  color: #000;
+  border: none;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.35);
+}
+
+.btn-danger {
+  background: rgba(244, 63, 94, 0.15);
+  color: #F43F5E;
+  border-color: rgba(244, 63, 94, 0.4);
+}
+
+.btn-danger:hover {
+  background: #F43F5E;
+  color: #FFF;
+  box-shadow: 0 0 16px rgba(244, 63, 94, 0.4);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+
+.btn-ghost:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* Monospace code snippet */
+.code-pill {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  color: #38BDF8;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}

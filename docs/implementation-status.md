@@ -1,57 +1,54 @@
 # Platform Implementation Status & Progress Tracker
 ## Autonomous AI Agent Security & Runtime Governance Platform
 
-**Current Phase:** Phase 0 (Establish Project Scope & Security Architecture)  
-**Overall Status:** Phase 0 Architecture Complete & Core Invariants Verified  
-**Last Updated:** Phase 0 Completion  
+**Current Phase:** Phase 1 (Project Foundation & Local Environment)  
+**Overall Status:** Phase 0 & Phase 1 Complete & Verified (46 Backend Tests + Next.js Production Build + Browser Verified)  
+**Last Updated:** Phase 1 Completion  
 
 ---
 
 ## 1. Executive Status Summary
 
-Phase 0 establishes the formal security architecture, product specifications, threat model, architecture decision records, typed domain model contracts, and an automated verification suite for the Autonomous AI Agent Security & Runtime Governance Platform.
+Phase 1 successfully establishes the foundational runtime infrastructure, database persistence, distributed caching, FastAPI in-line backend, Next.js dashboard shell, containerized local development environment, and CI/CD pipelines.
 
-The platform is designed to govern agent interactions with tools, APIs, databases, files, and external systems by rendering one of four deterministic decisions: **`ALLOW`**, **`BLOCK`**, **`REQUIRE_APPROVAL`**, or **`SUSPEND`**.
+All 46 backend automated tests pass. The Next.js production build passes with zero warnings. The dashboard UI has been visually verified in a headless browser with recorded interactions. Strict production security enforcements prevent any insecure development defaults from silently running in production.
 
 ---
 
-## 2. Deliverables Tracking (Phase 0)
+## 2. Deliverables Tracking
 
 | Deliverable | Location | Status | Description |
 | :--- | :--- | :--- | :--- |
-| **Product Requirements (PRD)** | [`docs/product-requirements.md`](file:///d:/Projects/Agent%20Governance/docs/product-requirements.md) | **Completed** | Full MVP & Post-MVP scope, core entity definitions, supported/unsupported boundaries, fail-secure matrix, SLA targets. |
-| **System Architecture & Deployment** | [`docs/architecture.md`](file:///d:/Projects/Agent%20Governance/docs/architecture.md) | **Completed** | Control plane vs. runtime enforcement plane, in-line mediation mechanics, pipeline flow, deployment topologies. |
-| **Threat Model & Security Analysis** | [`docs/threat-model.md`](file:///d:/Projects/Agent%20Governance/docs/threat-model.md) | **Completed** | Assets, actors, trust boundaries, 8 deep-dive threat scenarios, explicit limitations and assumptions. |
-| **Architecture Decision Records (ADRs)** | [`docs/adr/`](file:///d:/Projects/Agent%20Governance/docs/adr/) | **Completed** | 6 formal ADRs (0001 through 0006) capturing all foundational decisions. |
-| **Phase Checklist & Test Matrix** | [`docs/phase-checklist-and-test-matrix.md`](file:///d:/Projects/Agent%20Governance/docs/phase-checklist-and-test-matrix.md) | **Completed** | Phase 0-7 roadmap and 14 Acceptance Test Matrix (ATM) specifications. |
-| **Typed Domain Model & Invariants** | [`agent-security/src/agent_security/`](file:///d:/Projects/Agent%20Governance/agent-security/src/agent_security/) | **Completed** | Typed contracts, canonical JSON hashing, state machine transitions, zero-credential redaction, and rule precedence engine. |
-| **Automated Verification Suite** | [`agent-security/tests/`](file:///d:/Projects/Agent%20Governance/agent-security/tests/) | **Completed** | Comprehensive test suite verifying all Phase 0 contracts and invariants. |
+| **FastAPI Backend & Typed Config** | [`agent-security/src/agent_security/`](file:///d:/Projects/Agent%20Governance/agent-security/src/agent_security/) | **Completed** | Lifespan management, typed Pydantic settings, correlation IDs, structured errors, secret redaction. |
+| **Next.js TypeScript Dashboard** | [`dashboard/`](file:///d:/Projects/Agent%20Governance/dashboard/) | **Completed** | Full cyber-defense dashboard with Sidebar, Header, StatCards, HITL Approval Queue, Live Interception Feed, and Kill Switch. |
+| **PostgreSQL Schema Migrations** | [`agent-security/migrations/`](file:///d:/Projects/Agent%20Governance/agent-security/migrations/) | **Completed** | Alembic async migrations defining 10 core tables with foreign keys, indexes, and constraints. |
+| **Redis Cache & Governor Service** | [`agent-security/src/agent_security/services/redis.py`](file:///d:/Projects/Agent%20Governance/agent-security/src/agent_security/services/redis.py) | **Completed** | Async Redis client pool, health probes, and distributed caching readiness. |
+| **Liveness & Readiness Endpoints** | [`agent-security/src/agent_security/api/v1/health.py`](file:///d:/Projects/Agent%20Governance/agent-security/src/agent_security/api/v1/health.py) | **Completed** | `/health/live` (200) and `/health/ready` (checks PostgreSQL and Redis health, 503 if down). |
+| **Docker Compose Environment** | [`docker-compose.yml`](file:///d:/Projects/Agent%20Governance/docker-compose.yml) | **Completed** | Multi-container setup (Postgres 16, Redis 7, Backend, Dashboard) with healthchecks. |
+| **Environment Configuration Examples**| [`.env.example`](file:///d:/Projects/Agent%20Governance/.env.example), [`.env.test`](file:///d:/Projects/Agent%20Governance/.env.test) | **Completed** | Documented configuration templates without real secrets. |
+| **Continuous Integration CI** | [`.github/workflows/ci.yml`](file:///d:/Projects/Agent%20Governance/.github/workflows/ci.yml) | **Completed** | GitHub Actions workflow for backend lint/type/test and frontend lint/type/build. |
+| **Setup & Run Guide** | [`docs/setup-guide.md`](file:///d:/Projects/Agent%20Governance/docs/setup-guide.md) | **Completed** | Documented local commands, migration steps, and dev-vs-prod invariants. |
 
 ---
 
-## 3. Core Architectural Guarantees Established
+## 3. Core Architectural Guarantees Established (Phases 0 & 1)
 
-1. **Deterministic-First Invariant (Rule #9)**: Deterministic policy rules have absolute precedence. Secondary AI risk scores or classifiers may tighten or escalate (`ALLOW` $\to$ `REQUIRE_APPROVAL` or `BLOCK`), but **never** override a deterministic denial.
+1. **Deterministic-First Priority (Rule #9)**: Deterministic policy rules have absolute precedence. Secondary AI risk scores or classifiers may tighten or escalate (`ALLOW` $\to$ `REQUIRE_APPROVAL` or `BLOCK`), but **never** override a deterministic denial.
 2. **Decoupled State Machine (ADR 0006)**: Policy Decisions (`ALLOW`, `BLOCK`, `REQUIRE_APPROVAL`, `SUSPEND`) are strictly decoupled from Execution Lifecycle States (`SUBMITTED`, `AWAITING_APPROVAL`, `APPROVED`, `SCHEDULED`, `EXECUTING`, `SUCCEEDED`, `FAILED`, `CANCELLED`).
 3. **Cryptographic Approval Binding (ADR 0004)**: Approvals bind strictly to the canonical $SHA-256$ hash of the action request. Modifying arguments invalidates the approval token. Single-use and expiration are enforced.
 4. **In-Line Mediation Broker (ADR 0005)**: AI agents have zero access to target tool credentials. The broker intercepts, evaluates, and dispatches using injected secrets.
 5. **Fail-Secure Default (ADR 0003)**: Outages in policy evaluation, identity, or budget components fail closed to `BLOCK`.
-6. **Zero Credential Logging (Rule #7)**: Sensitive fields, authorization headers, and API keys are systematically redacted before emission to audit logs.
+6. **Zero Credential Logging (Rule #7)**: Sensitive fields, authorization headers, and API keys are systematically redacted before emission to structured logs.
+7. **Production Configuration Invariant**: No insecure dev defaults (weak keys, debug mode, default DB credentials, wildcard CORS) can silently run in production.
 
 ---
 
 ## 4. Acceptance Criteria Verification
 
-- [x] Product requirements with explicit MVP and post-MVP scope produced.
-- [x] Architecture and deployment diagrams produced.
-- [x] Threat model covering assets, actors, trust boundaries, abuse cases, assumptions, and mitigations produced.
-- [x] ADRs produced.
-- [x] Phase checklist and initial acceptance-test matrix produced.
-- [x] Control plane vs. runtime enforcement plane defined.
-- [x] Core concepts (Tenant, Project, AgentIdentity, Session, Task, Tool, Action, Policy, Decision, Approval, Execution, Audit-Event) defined.
-- [x] Supported vs. unsupported enforcement boundaries explicitly detailed.
-- [x] Policy decisions separated from execution lifecycle states.
-- [x] Failure behavior matrix for outages documented.
-- [x] Latency, throughput, retention, and availability targets documented as targets until measured.
-- [x] All 8 required threat scenarios thoroughly addressed with concrete mitigations.
-- [x] Typed domain contracts and automated invariant tests implemented and verified.
+- [x] Documented local command starts the platform (`docker compose up --build` or standalone local commands in `docs/setup-guide.md`).
+- [x] Readiness reflects dependency health (`/health/ready` returns 503 if PostgreSQL or Redis is unreachable).
+- [x] Initial tests (46 automated backend tests in pytest) pass.
+- [x] Production frontend build (`npm run build`) passes.
+- [x] Dashboard UI verified in browser with interactive controls and recorded session.
+- [x] No insecure development defaults silently apply in production (enforced via Pydantic model validator in `agent_security.config.Settings`).
+
