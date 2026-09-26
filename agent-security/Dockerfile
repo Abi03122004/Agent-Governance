@@ -12,8 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv for fast, reliable package builds
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Copy dependency specifications
-COPY pyproject.toml .
+# Copy dependency specifications and source
+COPY pyproject.toml README.md ./
+COPY src ./src
 RUN uv venv /opt/venv
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
@@ -34,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONPATH="/app/src"
 
 # Create unprivileged application user
 RUN groupadd -g 10001 appgroup && \

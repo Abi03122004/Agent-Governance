@@ -5,16 +5,22 @@ import React from "react";
 interface SidebarProps {
   activeTab: string;
   onSelectTab: (tab: string) => void;
+  activeAgentsCount?: number;
+  blockedCount?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  activeTab,
+  onSelectTab,
+  activeAgentsCount = 0,
+  blockedCount = 0,
+}) => {
   const navItems = [
-    { id: "overview", label: "Mission Control", icon: "⚡", badge: null },
-    { id: "stream", label: "Interception Stream", icon: "🛰️", badge: "LIVE" },
-    { id: "approvals", label: "Human Approvals", icon: "🛡️", badge: "3" },
-    { id: "policies", label: "Policy Guardrails", icon: "📜", badge: null },
-    { id: "audit", label: "Audit & Lineage", icon: "⛓️", badge: null },
-    { id: "agents", label: "Agent Identities", icon: "🤖", badge: "12" },
+    { id: "overview", label: "Dashboard", icon: "⚡", badge: null },
+    { id: "agents", label: "Agents", icon: "🤖", badge: activeAgentsCount ? `${activeAgentsCount}` : null },
+    { id: "sessions", label: "Sessions", icon: "⏱️", badge: null },
+    { id: "activity", label: "Runtime Activity", icon: "🛰️", badge: blockedCount > 0 ? `${blockedCount} BLOCKED` : "LIVE" },
+    { id: "policies", label: "Policies", icon: "📜", badge: null },
     { id: "health", label: "System Health", icon: "💚", badge: "READY" },
   ];
 
@@ -22,48 +28,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
     <aside
       id="sidebar-navigation"
       style={{
-        width: "260px",
-        background: "var(--bg-secondary)",
-        borderRight: "1px solid var(--border-subtle)",
+        width: "240px",
+        background: "var(--panel-bg)",
+        borderRight: "1px solid var(--border-rule)",
         display: "flex",
         flexDirection: "column",
-        padding: "24px 16px",
+        padding: "20px 12px",
         height: "100vh",
         position: "sticky",
         top: 0,
+        flexShrink: 0,
       }}
     >
       {/* Brand & Platform Emblem */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "32px", paddingLeft: "8px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "28px", paddingLeft: "6px" }}>
         <div
           style={{
-            width: "36px",
-            height: "36px",
-            borderRadius: "10px",
-            background: "linear-gradient(135deg, #00F0FF 0%, #0070F3 100%)",
+            width: "32px",
+            height: "32px",
+            borderRadius: "3px",
+            background: "var(--surface-plate)",
+            border: "1px solid var(--border-rule)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 0 16px rgba(0, 240, 255, 0.4)",
-            fontWeight: 800,
-            color: "#000",
-            fontSize: "1.2rem",
+            fontWeight: 700,
+            color: "var(--accent-telegraph)",
+            fontSize: "0.85rem",
+            fontFamily: "var(--font-mono)",
           }}
         >
           AG
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: "0.95rem", letterSpacing: "0.02em", color: "var(--text-primary)" }}>
+          <div style={{ fontWeight: 600, fontSize: "0.8125rem", letterSpacing: "0.02em", color: "var(--text-primary)" }}>
             AGENT GOVERNANCE
           </div>
-          <div style={{ fontSize: "0.7rem", color: "var(--accent-cyan)", fontFamily: "var(--font-mono)" }}>
-            RUNTIME DEFENSE
+          <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+            RUNTIME GATEWAY
           </div>
         </div>
       </div>
 
       {/* Navigation Links */}
-      <nav style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
+      <nav style={{ display: "flex", flexDirection: "column", gap: "3px", flex: 1 }}>
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -75,32 +83,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "10px 14px",
-                borderRadius: "8px",
-                background: isActive ? "rgba(0, 240, 255, 0.08)" : "transparent",
-                color: isActive ? "var(--accent-cyan)" : "var(--text-secondary)",
-                border: isActive ? "1px solid rgba(0, 240, 255, 0.25)" : "1px solid transparent",
+                padding: "8px 12px",
+                borderRadius: "3px",
+                background: isActive ? "var(--surface-plate)" : "transparent",
+                color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+                border: "none",
+                borderLeft: isActive ? "3px solid var(--accent-telegraph)" : "3px solid transparent",
                 cursor: "pointer",
-                fontWeight: isActive ? 600 : 500,
-                fontSize: "0.875rem",
+                fontWeight: isActive ? 600 : 400,
+                fontSize: "0.8125rem",
                 textAlign: "left",
-                transition: "all 0.15s ease",
+                transition: "background 0.1s ease, color 0.1s ease",
               }}
             >
-              <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span>{item.icon}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                <span style={{ fontSize: "0.9rem" }}>{item.icon}</span>
                 <span>{item.label}</span>
               </span>
               {item.badge && (
                 <span
                   style={{
                     fontSize: "0.65rem",
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                    background: item.badge === "LIVE" ? "rgba(16, 185, 129, 0.2)" : item.badge === "READY" ? "rgba(59, 130, 246, 0.2)" : "rgba(245, 158, 11, 0.2)",
-                    color: item.badge === "LIVE" ? "#10B981" : item.badge === "READY" ? "#38BDF8" : "#F59E0B",
+                    padding: "2px 5px",
+                    borderRadius: "2px",
+                    background:
+                      item.badge === "LIVE"
+                        ? "var(--status-allow-bg)"
+                        : item.badge === "READY"
+                        ? "var(--accent-telegraph-subtle)"
+                        : "var(--status-block-bg)",
+                    color:
+                      item.badge === "LIVE"
+                        ? "var(--status-allow-fg)"
+                        : item.badge === "READY"
+                        ? "#79C0FF"
+                        : "var(--status-block-fg)",
+                    border: `1px solid ${
+                      item.badge === "LIVE"
+                        ? "var(--status-allow-border)"
+                        : item.badge === "READY"
+                        ? "rgba(2, 132, 199, 0.3)"
+                        : "var(--status-block-border)"
+                    }`,
                     fontFamily: "var(--font-mono)",
-                    fontWeight: 700,
+                    fontWeight: 600,
                   }}
                 >
                   {item.badge}
@@ -111,23 +137,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab }) => {
         })}
       </nav>
 
-      {/* Fail-Secure Indicator Footer */}
+      {/* Control Plane Guard Status */}
       <div
-        className="glass-panel"
         style={{
-          padding: "12px",
+          background: "var(--surface-plate)",
+          border: "1px solid var(--border-rule)",
+          borderRadius: "3px",
+          padding: "10px",
           display: "flex",
           flexDirection: "column",
-          gap: "6px",
+          gap: "5px",
           fontSize: "0.75rem",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--status-allow-fg)" }}>
-          <span className="status-dot status-dot-active status-dot-pulse" />
-          <span style={{ fontWeight: 600 }}>FAIL-SECURE: ACTIVE</span>
+          <span className="status-dot status-dot-active" />
+          <span style={{ fontWeight: 600, fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>PRE-EXECUTION GATE</span>
         </div>
-        <div style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>
-          In-line broker enforcing strict zero-credential mediation.
+        <div style={{ color: "var(--text-muted)", fontSize: "0.6875rem", lineHeight: "1.4" }}>
+          In-line mediation active. Blocked operations reject with zero credential exposure.
         </div>
       </div>
     </aside>

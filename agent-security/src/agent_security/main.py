@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agent_security.api.router import api_router
 from agent_security.config import Settings, get_settings
-from agent_security.db.session import close_db
+from agent_security.db.session import close_db, init_db
 from agent_security.logging import configure_logging, get_logger
 from agent_security.middleware.correlation import CorrelationIdMiddleware
 from agent_security.middleware.error_handler import register_error_handlers
@@ -25,6 +25,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         f"Starting {settings.SERVICE_NAME} in '{settings.ENVIRONMENT}' environment "
         f"(debug={settings.DEBUG}, fail_secure={settings.ENABLE_FAIL_SECURE})."
     )
+
+    await init_db()
 
     try:
         yield
@@ -53,7 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=active_settings.CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
 

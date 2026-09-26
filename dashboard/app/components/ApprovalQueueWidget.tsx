@@ -58,31 +58,31 @@ export const ApprovalQueueWidget: React.FC = () => {
   };
 
   return (
-    <section id="approval-queue-section" className="glass-panel" style={{ padding: "24px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+    <section id="approval-queue-section" className="glass-panel" style={{ padding: "18px 20px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}>
+          <h2 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)" }}>
             Cryptographic Human Approval Queue (HITL)
           </h2>
           <span className="badge badge-approval">
             {approvals.filter((a) => a.status === "PENDING").length} PENDING
           </span>
         </div>
-        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>
           ADR 0004: SHA-256 HASH BOUND
         </span>
       </div>
 
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.8125rem" }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
-              <th style={{ padding: "10px 12px" }}>Ticket ID</th>
-              <th style={{ padding: "10px 12px" }}>Agent Identity</th>
-              <th style={{ padding: "10px 12px" }}>Target Tool</th>
-              <th style={{ padding: "10px 12px" }}>Canonical Payload Hash</th>
-              <th style={{ padding: "10px 12px" }}>TTL / Status</th>
-              <th style={{ padding: "10px 12px", textAlign: "right" }}>Actions</th>
+            <tr style={{ borderBottom: "1px solid var(--border-rule)", color: "var(--text-muted)" }}>
+              <th style={{ padding: "8px 12px" }}>Ticket ID</th>
+              <th style={{ padding: "8px 12px" }}>Agent Identity</th>
+              <th style={{ padding: "8px 12px" }}>Target Tool</th>
+              <th style={{ padding: "8px 12px" }}>Canonical Payload Hash</th>
+              <th style={{ padding: "8px 12px" }}>TTL / Status</th>
+              <th style={{ padding: "8px 12px", textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -92,29 +92,29 @@ export const ApprovalQueueWidget: React.FC = () => {
                 id={`row-${item.ticket_id}`}
                 style={{
                   borderBottom: "1px solid var(--border-subtle)",
-                  transition: "background 0.15s ease",
+                  transition: "background 0.1s ease",
                 }}
               >
-                <td style={{ padding: "12px", fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
+                <td style={{ padding: "10px 12px", fontFamily: "var(--font-mono)", color: "var(--text-primary)", fontSize: "0.75rem" }}>
                   {item.ticket_id}
                 </td>
-                <td style={{ padding: "12px", color: "var(--text-secondary)" }}>
-                  <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{item.agent_id}</div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{item.action_id}</div>
+                <td style={{ padding: "10px 12px", color: "var(--text-secondary)" }}>
+                  <div style={{ fontWeight: 500, color: "var(--text-primary)" }}>{item.agent_id}</div>
+                  <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>{item.action_id}</div>
                 </td>
-                <td style={{ padding: "12px" }}>
+                <td style={{ padding: "10px 12px" }}>
                   <span className="code-pill">{item.tool_name}</span>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "2px" }}>
                     {item.arguments_summary}
                   </div>
                 </td>
-                <td style={{ padding: "12px", fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--accent-cyan)" }}>
+                <td style={{ padding: "10px 12px", fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "#79C0FF" }}>
                   {item.canonical_hash}
                 </td>
-                <td style={{ padding: "12px" }}>
+                <td style={{ padding: "10px 12px" }}>
                   {item.status === "PENDING" ? (
-                    <span style={{ color: "#F59E0B", fontWeight: 600, fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>
-                      ⏳ {item.expires_in_minutes}m remaining
+                    <span style={{ color: "var(--status-approval-fg)", fontWeight: 500, fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>
+                      {item.expires_in_minutes}m remaining
                     </span>
                   ) : item.status === "APPROVED" ? (
                     <span className="badge badge-allow">APPROVED</span>
@@ -122,14 +122,14 @@ export const ApprovalQueueWidget: React.FC = () => {
                     <span className="badge badge-block">REJECTED</span>
                   )}
                 </td>
-                <td style={{ padding: "12px", textAlign: "right" }}>
+                <td style={{ padding: "10px 12px", textAlign: "right" }}>
                   {item.status === "PENDING" ? (
-                    <div style={{ display: "inline-flex", gap: "8px" }}>
+                    <div style={{ display: "inline-flex", gap: "6px" }}>
                       <button
                         id={`btn-approve-${item.ticket_id}`}
                         className="btn btn-primary"
                         onClick={() => handleDecision(item.ticket_id, "APPROVED")}
-                        style={{ padding: "6px 12px", fontSize: "0.75rem" }}
+                        style={{ padding: "4px 10px", fontSize: "0.75rem" }}
                       >
                         Sign & Allow
                       </button>
@@ -137,13 +137,13 @@ export const ApprovalQueueWidget: React.FC = () => {
                         id={`btn-reject-${item.ticket_id}`}
                         className="btn btn-danger"
                         onClick={() => handleDecision(item.ticket_id, "REJECTED")}
-                        style={{ padding: "6px 12px", fontSize: "0.75rem" }}
+                        style={{ padding: "4px 10px", fontSize: "0.75rem" }}
                       >
                         Block
                       </button>
                     </div>
                   ) : (
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Decision Recorded</span>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>Resolved</span>
                   )}
                 </td>
               </tr>

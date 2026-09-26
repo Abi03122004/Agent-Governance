@@ -1,6 +1,6 @@
 """Typed Platform Configuration with Secure Production Enforcements."""
 
-from typing import List, Literal
+from typing import List, Literal, Union
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     # Security & Cryptography
     SECRET_KEY: str = Field(default=DEFAULT_DEV_SECRET_KEY)
     SESSION_TOKEN_TTL_SECONDS: int = Field(default=3600, ge=60)
+    EXECUTION_AUTH_TTL_SECONDS: int = Field(default=120, ge=30, le=900)
     APPROVAL_TICKET_TTL_SECONDS: int = Field(default=900, ge=60)  # 15 minutes default
     ENABLE_FAIL_SECURE: bool = Field(default=True)
 
@@ -53,11 +54,11 @@ class Settings(BaseSettings):
     # Telemetry & Observability
     LOG_LEVEL: str = Field(default="INFO")
     SERVICE_NAME: str = Field(default="agent-governance-platform")
-    CORS_ORIGINS: List[str] = Field(
+    CORS_ORIGINS: Union[List[str], str] = Field(
         default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
     )
 
-    @field_validator("CORS_ORIGINS", mode="before")
+    @field_validator("CORS_ORIGINS", mode="after")
     @classmethod
     def parse_cors_origins(cls, v):
         if isinstance(v, str):

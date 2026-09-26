@@ -2,160 +2,155 @@
 
 import React from "react";
 
-interface InterceptedAction {
-  id: string;
-  time: string;
-  agent: string;
+export interface ActivityItem {
+  action_id: string;
+  timestamp: string;
+  agent_id: string;
   tool: string;
-  args: string;
-  decision: "ALLOW" | "BLOCK" | "REQUIRE_APPROVAL" | "SUSPEND";
-  reason: string;
-  latency_ms: number;
-  trace_id: string;
+  operation: string;
+  resource: string;
+  decision: "ALLOW" | "BLOCK" | "REQUIRE_APPROVAL" | "SUSPEND" | string;
+  execution_status: string;
+  reason_code?: string;
+  action_digest?: string;
+  correlation_id?: string;
 }
 
-const SAMPLE_FEED: InterceptedAction[] = [
-  {
-    id: "act-88301",
-    time: "20:49:10",
-    agent: "agent-doc-analyzer",
-    tool: "read_customer_file",
-    args: "{ file_id: 'doc-781.pdf', tenant_id: 'tenant-acme-corp' }",
-    decision: "ALLOW",
-    reason: "Deterministic RBAC matched read permission; budget quota within limits.",
-    latency_ms: 3.4,
-    trace_id: "trc_9a12e84bc9",
-  },
-  {
-    id: "act-88302",
-    time: "20:49:11",
-    agent: "agent-support-bot",
-    tool: "execute_raw_bash",
-    args: "{ command: 'cat /etc/passwd' }",
-    decision: "BLOCK",
-    reason: "Policy rule 'deny_unauthorized_shell' triggered. Hard boundary block.",
-    latency_ms: 1.8,
-    trace_id: "trc_4b18f02aa1",
-  },
-  {
-    id: "act-88303",
-    time: "20:49:12",
-    agent: "agent-data-scraper",
-    tool: "external_http_fetch",
-    args: "{ url: 'http://169.254.169.254/latest/meta-data/' }",
-    decision: "SUSPEND",
-    reason: "Cloud metadata tripwire triggered. Agent session frozen immediately.",
-    latency_ms: 1.2,
-    trace_id: "trc_8819cc7e41",
-  },
-  {
-    id: "act-88304",
-    time: "20:49:14",
-    agent: "agent-finance-trader",
-    tool: "wire_transfer",
-    args: "{ amount: 45000, recipient: 'Global Vendor Inc' }",
-    decision: "REQUIRE_APPROVAL",
-    reason: "Spend amount exceeds auto-allow threshold ($10,000). Escalated to HITL.",
-    latency_ms: 4.1,
-    trace_id: "trc_7719aa8bc0",
-  },
-  {
-    id: "act-88305",
-    time: "20:49:15",
-    agent: "agent-lead-enricher",
-    tool: "search_public_registry",
-    args: "{ query: 'Acme Corp' }",
-    decision: "ALLOW",
-    reason: "Low-risk registered tool permitted by project policy.",
-    latency_ms: 2.9,
-    trace_id: "trc_1190bc98df",
-  },
-];
+interface LiveInterceptionFeedProps {
+  activities: ActivityItem[];
+  onSelectAgent?: (agentId: string) => void;
+  isLive?: boolean;
+}
 
-export const LiveInterceptionFeed: React.FC = () => {
+export const LiveInterceptionFeed: React.FC<LiveInterceptionFeedProps> = ({
+  activities,
+  onSelectAgent,
+  isLive = true,
+}) => {
+  const getBadgeClass = (decision: string) => {
+    switch (decision) {
+      case "ALLOW":
+        return "badge-allow";
+      case "BLOCK":
+        return "badge-block";
+      case "REQUIRE_APPROVAL":
+        return "badge-approval";
+      default:
+        return "badge-suspend";
+    }
+  };
+
   return (
-    <section id="live-interception-section" className="glass-panel" style={{ padding: "24px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}>
-            Live In-Line Interception & Mediation Stream
+    <section id="live-interception-section" className="glass-panel" style={{ padding: "18px 20px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span className={`status-dot ${isLive ? "status-dot-active status-dot-pulse" : ""}`} />
+          <h2 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)" }}>
+            Pre-Execution Interception & Enforcement Stream
           </h2>
-          <span className="status-dot status-dot-active status-dot-pulse" />
         </div>
-        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-          BROKER-MEDIATED (NO DIRECT TOOL ACCESS)
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>
+          {isLive ? "REALTIME TELEMETRY (WS)" : "CONTROL PLANE SYNC"}
         </span>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        {SAMPLE_FEED.map((item) => {
-          const badgeClass =
-            item.decision === "ALLOW"
-              ? "badge-allow"
-              : item.decision === "BLOCK"
-              ? "badge-block"
-              : item.decision === "REQUIRE_APPROVAL"
-              ? "badge-approval"
-              : "badge-suspend";
+      {activities.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "36px", color: "var(--text-muted)", fontSize: "0.8125rem", border: "1px dashed var(--border-rule)", borderRadius: "3px" }}>
+          No mediated actions logged yet. Run simulated agent workflows to trigger runtime interception.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          {activities.slice(0, 15).map((item) => {
+            const timeStr = item.timestamp
+              ? new Date(item.timestamp).toLocaleTimeString()
+              : "just now";
 
-          return (
-            <div
-              key={item.id}
-              id={`feed-${item.id}`}
-              style={{
-                background: "rgba(0, 0, 0, 0.3)",
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "8px",
-                padding: "14px 18px",
-                display: "grid",
-                gridTemplateColumns: "80px 180px 180px 1fr 140px 90px",
-                alignItems: "center",
-                gap: "12px",
-                fontSize: "0.825rem",
-                transition: "border-color 0.15s ease",
-              }}
-            >
-              {/* Time */}
-              <div style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>
-                {item.time}
-              </div>
+            return (
+              <div
+                key={item.action_id}
+                id={`feed-${item.action_id}`}
+                style={{
+                  background: "var(--surface-plate)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "2px",
+                  padding: "10px 14px",
+                  display: "grid",
+                  gridTemplateColumns: "70px 150px 170px 1fr 130px 100px",
+                  alignItems: "center",
+                  gap: "12px",
+                  fontSize: "0.8125rem",
+                  transition: "border-color 0.1s ease",
+                }}
+              >
+                {/* Time */}
+                <div style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>
+                  {timeStr}
+                </div>
 
-              {/* Agent */}
-              <div style={{ color: "var(--text-primary)", fontWeight: 600 }}>
-                {item.agent}
-                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-                  {item.trace_id}
+                {/* Agent */}
+                <div
+                  style={{ color: "var(--text-primary)", fontWeight: 500, cursor: onSelectAgent ? "pointer" : "default" }}
+                  onClick={() => onSelectAgent && onSelectAgent(item.agent_id)}
+                >
+                  <span style={{ textDecoration: onSelectAgent ? "underline" : "none", color: "var(--text-primary)" }}>
+                    {item.agent_id}
+                  </span>
+                  <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                    {item.correlation_id || item.action_id.slice(0, 12)}
+                  </div>
+                </div>
+
+                {/* Tool & Operation */}
+                <div>
+                  <span className="code-pill">{item.tool}.{item.operation}</span>
+                </div>
+
+                {/* Resource & Reason */}
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      color: "var(--text-secondary)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    Target: {item.resource}
+                  </div>
+                  <div style={{ color: "var(--text-muted)", fontSize: "0.6875rem", marginTop: "2px" }}>
+                    {item.reason_code ? `Code: ${item.reason_code}` : `Digest: ${item.action_digest ? item.action_digest.slice(0, 16) + "..." : "verified"}`}
+                  </div>
+                </div>
+
+                {/* Verdict Badge */}
+                <div>
+                  <span className={`badge ${getBadgeClass(item.decision)}`}>{item.decision}</span>
+                </div>
+
+                {/* Execution Status */}
+                <div
+                  style={{
+                    textAlign: "right",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "0.75rem",
+                    color:
+                      item.execution_status === "EXECUTED"
+                        ? "var(--status-allow-fg)"
+                        : item.execution_status === "BLOCKED"
+                        ? "var(--status-block-fg)"
+                        : "var(--status-approval-fg)",
+                    fontWeight: 600,
+                  }}
+                >
+                  {item.execution_status}
                 </div>
               </div>
-
-              {/* Tool */}
-              <div>
-                <span className="code-pill">{item.tool}</span>
-              </div>
-
-              {/* Arguments & Reason */}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>
-                  {item.args}
-                </div>
-                <div style={{ color: "var(--text-muted)", fontSize: "0.725rem", marginTop: "2px" }}>
-                  {item.reason}
-                </div>
-              </div>
-
-              {/* Verdict */}
-              <div>
-                <span className={`badge ${badgeClass}`}>{item.decision}</span>
-              </div>
-
-              {/* Latency */}
-              <div style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "#38BDF8" }}>
-                {item.latency_ms} ms
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 };

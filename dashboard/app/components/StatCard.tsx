@@ -18,54 +18,42 @@ export const StatCard: React.FC<StatCardProps> = ({
   value,
   subtitle,
   icon,
-  accentColor = "var(--accent-cyan)",
+  accentColor = "var(--accent-telegraph)",
   trend,
 }) => {
   return (
     <div
       id={id}
-      className="glass-panel"
       style={{
-        padding: "20px",
+        background: "var(--panel-bg)",
+        border: "1px solid var(--border-rule)",
+        borderTop: `2px solid ${accentColor}`,
+        borderRadius: "3px",
+        padding: "14px 16px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        gap: "12px",
-        position: "relative",
-        overflow: "hidden",
+        gap: "8px",
+        minHeight: "105px",
       }}
     >
-      {/* Background glow accent */}
-      <div
-        style={{
-          position: "absolute",
-          top: "-20px",
-          right: "-20px",
-          width: "80px",
-          height: "80px",
-          borderRadius: "50%",
-          background: accentColor,
-          opacity: 0.08,
-          filter: "blur(20px)",
-          pointerEvents: "none",
-        }}
-      />
-
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>
+        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>
           {title}
         </span>
-        <span style={{ fontSize: "1.2rem" }}>{icon}</span>
+        <span style={{ fontSize: "1rem", opacity: 0.8 }}>{icon}</span>
       </div>
 
-      <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <span
           style={{
-            fontSize: "1.8rem",
-            fontWeight: 800,
+            fontSize: "1.5rem",
+            fontWeight: 600,
             color: "var(--text-primary)",
             fontFamily: "var(--font-mono)",
-            letterSpacing: "-0.02em",
+            fontVariantNumeric: "tabular-nums",
+            letterSpacing: "-0.03em",
+            lineHeight: 1,
           }}
         >
           {value}
@@ -73,8 +61,8 @@ export const StatCard: React.FC<StatCardProps> = ({
         {trend && (
           <span
             style={{
-              fontSize: "0.75rem",
-              color: trend.startsWith("+") ? "#10B981" : "#F43F5E",
+              fontSize: "0.6875rem",
+              color: trend.startsWith("+") ? "var(--status-allow-fg)" : "var(--status-block-fg)",
               fontFamily: "var(--font-mono)",
               fontWeight: 600,
             }}
@@ -84,7 +72,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         )}
       </div>
 
-      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", maxWidth: "60ch" }}>
         {subtitle}
       </div>
     </div>

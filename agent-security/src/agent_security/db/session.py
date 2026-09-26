@@ -59,6 +59,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+async def init_db() -> None:
+    """Initialize database tables if they do not exist."""
+    try:
+        from agent_security.db.models import Base
+        engine = get_db_engine()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables initialized successfully.")
+    except Exception as exc:
+        logger.warning(f"Database table initialization notice: {exc}")
+
+
 async def check_db_health() -> bool:
     """Execute a lightweight probe to verify database readiness."""
     try:

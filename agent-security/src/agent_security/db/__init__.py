@@ -10,7 +10,7 @@ from agent_security.db.models import (
     PolicyModel,
     PolicyRuleModel,
     ProjectModel,
-    TenantModel,
+    OrganizationModel,
     ToolModel,
 )
 from agent_security.db.session import (
@@ -23,7 +23,7 @@ from agent_security.db.session import (
 
 __all__ = [
     "Base",
-    "TenantModel",
+    "OrganizationModel",
     "ProjectModel",
     "AgentModel",
     "AgentSessionModel",

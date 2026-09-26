@@ -20,10 +20,10 @@ def compute_action_canonical_payload(action: ActionRequest) -> Dict[str, Any]:
     """Extract canonical fields from an ActionRequest for hashing.
     
     Excludes ephemeral or runtime fields that do not define the semantic action,
-    ensuring that exact arguments, target tool, session, tenant, and identity are locked.
+    ensuring that exact arguments, target tool, session, organization, and identity are locked.
     """
     return {
-        "tenant_id": action.tenant_id,
+        "organization_id": action.organization_id,
         "project_id": action.project_id,
         "agent_id": action.agent_id,
         "session_id": action.session_id,

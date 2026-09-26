@@ -18,55 +18,103 @@ from sqlalchemy.orm import declarative_base, relationship
 Base = declarative_base()
 
 
-class TenantModel(Base):
-    __tablename__ = "tenants"
+class OrganizationModel(Base):
+    __tablename__ = "organizations"
 
     id = Column(String(64), primary_key=True)
     name = Column(String(128), nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
+    status = Column(String(32), default="active", nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
-    projects = relationship("ProjectModel", back_populates="tenant", cascade="all, delete-orphan")
+    projects = relationship("ProjectModel", back_populates="organization", cascade="all, delete-orphan")
+    memberships = relationship("MembershipModel", back_populates="organization", cascade="all, delete-orphan")
 
 
 class ProjectModel(Base):
     __tablename__ = "projects"
 
     id = Column(String(64), primary_key=True)
-    tenant_id = Column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(String(64), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(128), nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
+    status = Column(String(32), default="active", nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
-    tenant = relationship("TenantModel", back_populates="projects")
+    organization = relationship("OrganizationModel", back_populates="projects")
     agents = relationship("AgentModel", back_populates="project", cascade="all, delete-orphan")
+
+
+class UserModel(Base):
+    __tablename__ = "users"
+
+    id = Column(String(64), primary_key=True)
+    email = Column(String(256), unique=True, nullable=False, index=True)
+    display_name = Column(String(128), nullable=False)
+    status = Column(String(32), default="active", nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    memberships = relationship("MembershipModel", back_populates="user", cascade="all, delete-orphan")
+
+
+class MembershipModel(Base):
+    __tablename__ = "memberships"
+
+    id = Column(String(64), primary_key=True)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(String(64), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(64), nullable=False) # administrator, security_operator, approver, viewer
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    
+    user = relationship("UserModel", back_populates="memberships")
+    organization = relationship("OrganizationModel", back_populates="memberships")
 
 
 class AgentModel(Base):
     __tablename__ = "agents"
 
     id = Column(String(64), primary_key=True)
-    tenant_id = Column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(String(64), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     project_id = Column(String(64), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(128), nullable=False)
-    role = Column(String(64), default="standard_agent", nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
-    is_suspended = Column(Boolean, default=False, nullable=False, index=True)
+    owner = Column(String(128), nullable=False)
+    environment = Column(String(64), default="development", nullable=False)
+    purpose = Column(Text, nullable=True)
+    status = Column(String(32), default="active", nullable=False) # active, revoked, suspended
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     project = relationship("ProjectModel", back_populates="agents")
+    credentials = relationship("AgentCredentialModel", back_populates="agent", cascade="all, delete-orphan")
+
+
+class AgentCredentialModel(Base):
+    __tablename__ = "agent_credentials"
+
+    id = Column(String(64), primary_key=True)
+    agent_id = Column(String(64), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    secret_hash = Column(String(128), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    agent = relationship("AgentModel", back_populates="credentials")
 
 
 class AgentSessionModel(Base):
     __tablename__ = "agent_sessions"
 
     session_id = Column(String(128), primary_key=True)
-    tenant_id = Column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(String(64), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     project_id = Column(String(64), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     agent_id = Column(String(64), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
-    is_revoked = Column(Boolean, default=False, nullable=False, index=True)
+    credential_id = Column(String(64), ForeignKey("agent_credentials.id", ondelete="SET NULL"), nullable=True)
+    status = Column(String(32), default="active", nullable=False) # active, completed, terminated
+    correlation_id = Column(String(128), nullable=True)
+    started_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    ended_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class ToolModel(Base):
@@ -85,7 +133,7 @@ class PolicyModel(Base):
     __tablename__ = "policies"
 
     id = Column(String(64), primary_key=True)
-    tenant_id = Column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(String(64), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(128), nullable=False)
     version = Column(Integer, default=1, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -113,7 +161,7 @@ class ApprovalRequestModel(Base):
     __tablename__ = "approval_requests"
 
     ticket_id = Column(String(128), primary_key=True)
-    tenant_id = Column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(String(64), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     action_id = Column(String(128), nullable=False, index=True)
     canonical_action_hash = Column(String(64), nullable=False, index=True)
     status = Column(String(32), default="PENDING", nullable=False, index=True)
@@ -144,7 +192,7 @@ class AuditEventModel(Base):
     __tablename__ = "audit_events"
 
     event_id = Column(String(128), primary_key=True)
-    tenant_id = Column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(String(64), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     project_id = Column(String(64), nullable=False)
     agent_id = Column(String(64), nullable=False, index=True)
     session_id = Column(String(128), nullable=False, index=True)
@@ -162,5 +210,41 @@ class AuditEventModel(Base):
     timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
 
     __table_args__ = (
-        Index("ix_audit_tenant_timestamp", "tenant_id", "timestamp"),
+        Index("ix_audit_organization_timestamp", "organization_id", "timestamp"),
     )
+
+
+class RuntimeActionModel(Base):
+    """Normalized action and policy decision, written before any execution."""
+    __tablename__ = "runtime_actions"
+
+    id = Column(String(128), primary_key=True)
+    organization_id = Column(String(64), nullable=False, index=True)
+    project_id = Column(String(64), nullable=False, index=True)
+    agent_id = Column(String(64), nullable=False, index=True)
+    session_id = Column(String(128), nullable=False, index=True)
+    tool = Column(String(64), nullable=False)
+    operation = Column(String(64), nullable=False)
+    resource = Column(String(256), nullable=False)
+    normalized_action = Column(JSONB, nullable=False)
+    action_digest = Column(String(80), nullable=False, index=True)
+    decision = Column(String(32), nullable=False, index=True)
+    reason_code = Column(String(64), nullable=False)
+    correlation_id = Column(String(128), nullable=False, index=True)
+    execution_status = Column(String(32), nullable=False, default="not_executed")
+    result = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+
+    __table_args__ = (Index("ix_runtime_activity_agent_created", "agent_id", "created_at"),)
+
+
+class ExecutionAuthorizationModel(Base):
+    """One-time server-side replay guard for an action-bound authorization."""
+    __tablename__ = "execution_authorizations"
+
+    id = Column(String(128), primary_key=True)
+    action_id = Column(String(128), ForeignKey("runtime_actions.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

@@ -5,9 +5,12 @@ from agent_security.domain.enums import PolicyDecision
 from agent_security.domain.policy import PolicyEvaluationContext
 
 
-class TenantMismatchError(ValueError):
-    """Raised when an action request attempts cross-tenant access."""
+class OrganizationMismatchError(ValueError):
+    """Raised when an action request attempts cross-organization access."""
     pass
+
+
+TenantMismatchError = OrganizationMismatchError
 
 
 class DecisionSynthesisEngine:
@@ -16,7 +19,7 @@ class DecisionSynthesisEngine:
     Guarantees:
     1. Deterministic DENY/BLOCK/SUSPEND can never be overridden by AI risk scores.
     2. AI risk scores can only tighten/escalate decisions (One-Way Escalation).
-    3. Session and Tenant integrity are validated before policy evaluation.
+    3. Session and Organization integrity are validated before policy evaluation.
     """
 
     AI_ESCALATE_TO_APPROVAL_THRESHOLD: float = 0.60
@@ -33,15 +36,18 @@ class DecisionSynthesisEngine:
         Returns:
             Tuple[PolicyDecision, str]: (Final Decision, Justification Reason)
         """
-        # 1. Tenant Sandboxing Invariant (Threat Scenario 2)
-        if context.action.tenant_id != context.session.tenant_id:
-            raise TenantMismatchError(
-                f"Cross-tenant violation: Action tenant '{context.action.tenant_id}' "
-                f"does not match session tenant '{context.session.tenant_id}'."
+        # 1. Organization Sandboxing Invariant (Threat Scenario 2)
+        action_org = context.action.tenant_id or context.action.organization_id
+        session_org = context.session.tenant_id or context.session.organization_id
+        agent_org = context.agent.tenant_id or context.agent.organization_id
+        if action_org != session_org:
+            raise OrganizationMismatchError(
+                f"Cross-organization violation: Action organization '{action_org}' "
+                f"does not match session organization '{session_org}'."
             )
-        if context.agent.tenant_id != context.session.tenant_id:
-            raise TenantMismatchError(
-                f"Identity tenant '{context.agent.tenant_id}' does not match session tenant '{context.session.tenant_id}'."
+        if agent_org != session_org:
+            raise OrganizationMismatchError(
+                f"Identity organization '{agent_org}' does not match session organization '{session_org}'."
             )
 
         # 2. Agent Suspension Check (Kill switch)

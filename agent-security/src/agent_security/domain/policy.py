@@ -21,9 +21,9 @@ class PolicyRule(BaseModel):
 
 
 class Policy(BaseModel):
-    """A collection of governance rules scoped to a tenant or project."""
+    """A collection of governance rules scoped to a organization or project."""
     policy_id: str = Field(..., min_length=3, max_length=64)
-    tenant_id: str = Field(..., min_length=3, max_length=64)
+    organization_id: str = Field(..., min_length=3, max_length=64)
     name: str = Field(..., min_length=1, max_length=128)
     version: int = Field(default=1, ge=1)
     rules: List[PolicyRule] = Field(default_factory=list)

@@ -9,7 +9,7 @@ from agent_security.domain.enums import AuditSeverity, ExecutionState, PolicyDec
 class AuditEvent(BaseModel):
     """Structured, tamper-evident audit record capturing action lifecycle and security decisions."""
     event_id: str = Field(..., min_length=8, max_length=128)
-    tenant_id: str = Field(..., min_length=3, max_length=64)
+    organization_id: str = Field(..., min_length=3, max_length=64)
     project_id: str = Field(..., min_length=3, max_length=64)
     agent_id: str = Field(..., min_length=3, max_length=64)
     session_id: str = Field(..., min_length=8, max_length=128)
