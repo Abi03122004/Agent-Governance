@@ -94,7 +94,7 @@ docker compose up --build
 
 1. Navigate to the backend directory and set up a virtual environment:
    ```bash
-   cd agent-security
+   cd backend
    python -m venv .venv
    # Windows:
    .\.venv\Scripts\activate
@@ -105,7 +105,7 @@ docker compose up --build
 
 2. Configure environment variables:
    ```bash
-   cp .env.example .env
+   cp ../.env.example .env
    ```
 
 3. Run migrations and start the server:
@@ -115,9 +115,9 @@ docker compose up --build
 
 ### Frontend Setup
 
-1. Navigate to the dashboard directory:
+1. Navigate to the frontend directory:
    ```bash
-   cd dashboard
+   cd frontend
    npm install
    npm run dev
    ```
@@ -130,7 +130,7 @@ docker compose up --build
 The test suite covers identity, credentials, tenant isolation, deterministic policy evaluation, action integrity, execution authorization, and zero-execution enforcement:
 
 ```bash
-cd agent-security
+cd backend
 pytest -v
 ```
 
@@ -152,7 +152,7 @@ The platform comes with simulated independent agents communicating over HTTP wit
 Ensure the backend is running, then execute:
 
 ```bash
-python examples/run_demo.py
+python agents/run_demo.py
 ```
 
 ### Run Standalone Agents
@@ -160,10 +160,10 @@ python examples/run_demo.py
 Each agent can also be executed independently:
 
 ```bash
-python examples/finance_agent.py
-python examples/support_agent.py
-python examples/devops_agent.py
-python examples/research_agent.py
+python agents/finance_agent.py
+python agents/support_agent.py
+python agents/devops_agent.py
+python agents/research_agent.py
 ```
 
 ---

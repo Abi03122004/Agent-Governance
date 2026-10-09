@@ -33,7 +33,7 @@ services:
 
   backend:
     build:
-      context: ./agent-security
+      context: ./backend
       dockerfile: Dockerfile
     container_name: agent_governance_backend
     restart: unless-stopped
@@ -53,11 +53,11 @@ services:
       redis:
         condition: service_healthy
 
-  dashboard:
+  frontend:
     build:
-      context: ./dashboard
+      context: ./frontend
       dockerfile: Dockerfile
-    container_name: agent_governance_dashboard
+    container_name: agent_governance_frontend
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
