@@ -59,7 +59,31 @@ def get_or_create_agent_credential(agent_id: str, name: str, purpose: str) -> st
     except Exception:
         pass
 
-    # 5. Register agent
+    # Ensure reviewer user & membership (for requester-approver separation)
+    try:
+        requests.post(
+            f"{BASE_URL}/api/v1/users",
+            json={"id": "usr_reviewer", "email": "reviewer@enterprise.internal", "display_name": "Senior Reviewer"},
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+    try:
+        requests.post(
+            f"{BASE_URL}/api/v1/users/memberships",
+            json={
+                "id": "mem_reviewer_01",
+                "user_id": "usr_reviewer",
+                "organization_id": "org_enterprise",
+                "role": "approver",
+            },
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+    # 5. Register agent (and ensure active if previously suspended)
     try:
         requests.post(
             f"{BASE_URL}/api/v1/agents",
@@ -72,6 +96,16 @@ def get_or_create_agent_credential(agent_id: str, name: str, purpose: str) -> st
                 "environment": "production",
                 "purpose": purpose,
             },
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+    try:
+        requests.patch(
+            f"{BASE_URL}/api/v1/agents/{agent_id}",
+            headers=ADMIN_HEADERS,
+            json={"status": "active"},
             timeout=5,
         )
     except Exception:

@@ -17,4 +17,5 @@ class AgentSessionModel(Base):
     status = Column(String(32), default="active", nullable=False)  # active, completed, terminated
     correlation_id = Column(String(128), nullable=True)
     started_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
     ended_at = Column(DateTime(timezone=True), nullable=True)

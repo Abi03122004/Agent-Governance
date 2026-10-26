@@ -80,3 +80,34 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
         created_at=db_project.created_at,
         updated_at=db_project.updated_at
     )
+
+from agent_security.services.audit_service import AuditService
+
+class ProjectUpdate(BaseModel):
+    status: str = Field(..., pattern=r"^(active|suspended|archived)$")
+
+@router.patch("/{project_id}", response_model=Project)
+async def update_project_status(project_id: str, update_req: ProjectUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ProjectModel).where(ProjectModel.id == project_id))
+    db_project = result.scalar_one_or_none()
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    db_project.status = update_req.status
+    await AuditService.record_event(
+        db,
+        organization_id=db_project.organization_id,
+        project_id=project_id,
+        event_type="project.status_updated",
+        severity="WARN" if update_req.status == "suspended" else "INFO",
+        details={"status": update_req.status},
+    )
+    await db.commit()
+    await db.refresh(db_project)
+    return Project(
+        id=db_project.id,
+        organization_id=db_project.organization_id,
+        name=db_project.name,
+        status=db_project.status,
+        created_at=db_project.created_at,
+        updated_at=db_project.updated_at,
+    )

@@ -127,20 +127,36 @@ docker compose up --build
 
 ## 4. Running the Test Suite
 
-The test suite covers identity, credentials, tenant isolation, deterministic policy evaluation, action integrity, execution authorization, and zero-execution enforcement:
+The test suite thoroughly covers identity, credentials, tenant isolation, deterministic policy evaluation, action integrity, execution authorization, SSRF-safe connectors, indirect prompt injection defense, anomaly monitoring, and zero-execution enforcement:
 
 ```bash
 cd backend
-pytest -v
+# Windows Powershell:
+$env:PYTHONPATH='src'; .venv\Scripts\python.exe -m pytest -v
+# Linux / macOS:
+PYTHONPATH=src pytest -v
 ```
 
-All 57 unit and integration tests pass cleanly.
+**All 88 unit, integration, and security tests pass cleanly (100% pass rate).**
 
 ---
 
-## 5. Multi-Agent Simulation & Verification Demo
+## 5. Security Architecture & Defense Layers
 
-The platform comes with simulated independent agents communicating over HTTP with the runtime gateway:
+- **Zero-Bypass Runtime Interceptor**: All tool operations pass through the gateway mediator before any side effect. Blocked operations return execution count $\equiv 0$.
+- **SSRF-Safe Connector**: Prohibits private IP ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), cloud metadata (`169.254.169.254`), loopbacks, IPv6 mapped variants, enforces redirect destination revalidation, DNS rebinding guards, and 5MB response caps.
+- **Confinement & SQLi-Safe Connectors**: Chroot workspace confinement (`SafeFileConnector`) with path traversal prevention and dotfile blocking (`.env`, `id_rsa`, `.pem`). Parameterized database connector (`SafeDatabaseConnector`) blocking destructive DDL and SQL injection patterns.
+- **Outbound Data Loss Prevention (DLP)**: Automatic classification labels (`RESTRICTED`, `CONFIDENTIAL`, `INTERNAL`, `PUBLIC`) and sensitive key / PII redaction (`[REDACTED_SECRET]`, SSN, credit cards).
+- **Indirect Prompt Injection Defense**: `InjectionDetector` scans for DAN jailbreaks, system role overrides, exfiltration triggers, and chat template smuggling (`<|im_start|>`, `[INST]`, `<<SYS>>`). Untrusted external data is encapsulated within `<untrusted_tool_output>` blocks with cryptographic hashes and escaped delimiters.
+- **Anomaly & Rate Spike Monitoring**: Sliding-window tracking in Redis (with in-memory fallback) alerting on rate spikes ($>30$ ops/min) and repeated policy blocks ($\ge 3$ blocks in 300s).
+- **Human-in-the-Loop (HITL) Approvals**: Cryptographically signed execution tickets with strict separation of agent owner vs approver, and immediate expiry enforcement.
+- **Cryptographic Audit Hash Chain**: Every audit event is chained via SHA-256 (`previous_event_hash -> event_hash`), tamper-evident, and verifiable in real-time via `/api/v1/audit/verify-chain`.
+
+---
+
+## 6. Multi-Agent Simulation & Verification Demo
+
+The platform includes simulated independent agents communicating over HTTP with the runtime gateway:
 
 - **Finance Agent**: Permitted database read (`ALLOW`); destructive delete attempt is blocked (`BLOCK`).
 - **Support Agent**: Customer ticket lookup (`ALLOW`).
@@ -168,24 +184,28 @@ python agents/research_agent.py
 
 ---
 
-## 6. End-to-End Demo Scenario Flow
+## 7. End-to-End Demo Scenario Flow
 
-1. **Bootstrap & Register**: Automatically creates `Enterprise Autonomous Fleet` organization, `Core Ops` project, and registers 4 agents (Finance, Support, DevOps, Research).
+1. **Bootstrap & Register**: Automatically creates `Enterprise Autonomous Fleet` organization, `Core Ops` project, reviewer user, and registers 4 agents (Finance, Support, DevOps, Research).
 2. **Issue Credentials**: Issues cryptographically hashed credentials for each agent.
 3. **Establish Sessions**: Each agent authenticates via Bearer token to establish an isolated runtime session.
 4. **Finance Read (`ALLOW`)**: Requesting `database.read` evaluates to `ALLOW`, single-use authorization token is issued, and tool executes.
 5. **Finance Delete (`BLOCK`)**: Requesting `database.delete` evaluates to `BLOCK`. Zero authorization token is issued. Tool execution count remains strictly 0.
-6. **DevOps Mutation (`REQUIRE_APPROVAL`)**: Staging deployment mutation evaluates to `REQUIRE_APPROVAL`. Automatic execution is frozen.
-7. **Emergency Suspension (`SUSPEND`)**: Finance Agent is suspended via administrative control. Subsequent actions are immediately blocked.
-8. **Realtime Dashboard Monitoring**: All evaluated decisions, digests, and execution statuses stream live to the Next.js Dashboard.
+6. **DevOps Mutation & HITL Sign-Off (`REQUIRE_APPROVAL`)**: Staging deployment mutation evaluates to `REQUIRE_APPROVAL`. Automatic execution is frozen until an authorized reviewer (`reviewer@enterprise.internal`) approves the ticket.
+7. **Research Protected Secrets Attempt (`BLOCK`)**: Unauthorized secrets retrieval is intercepted and blocked at the gateway.
+8. **Emergency Suspension (`SUSPEND`)**: Finance Agent is suspended via administrative control. Subsequent actions are immediately halted at the gateway.
+9. **Realtime Dashboard Monitoring & Audit Chain**: Telemetry and cryptographic SHA-256 audit ledger verify complete tamper-free state.
 
 ---
 
-## 7. Next.js Dashboard Features
+## 8. Next.js Dashboard Features
 
 - **Mission Control Overview**: Realtime metric cards (`Active Agents`, `Actions Today`, `Allowed`, `Blocked`, `Pending Approval`, `Suspended`).
 - **Live Interception Stream**: Instant visual updates via WebSocket (`/api/v1/monitoring/ws/activity`) with short-polling fallback. Distinct visual badges for `ALLOW`, `BLOCK`, `REQUIRE_APPROVAL`, `SUSPEND`.
-- **Agents Management**: Complete agent identity table with status toggle (`Suspend` / `Activate`) and deep inspection modal showing sessions and recent actions.
+- **HITL Approval Queue**: Real-time pending approval widget allowing security operators to inspect canonical action hashes, review arguments, and submit Approve/Reject decisions with audit rationale.
+- **Cryptographic Audit Ledger**: Immutable audit log table with one-click live SHA-256 hash chain verification (`/api/v1/audit/verify-chain`).
+- **Agent Credentials & Rotation**: Agent details modal with one-time credential display, copy-to-clipboard, and instant credential rotation with old secret revocation.
+- **Agents Management**: Complete agent identity table with status toggle (`Suspend` / `Activate`) and deep inspection modal.
 - **Sessions Inspector**: Table of all active and historical agent runtime sessions.
 - **Runtime Activity Table**: Detailed audit record including cryptographic action digests and correlation IDs.
 - **Policy Guardrails**: Inspection of active deterministic policies and trigger conditions.

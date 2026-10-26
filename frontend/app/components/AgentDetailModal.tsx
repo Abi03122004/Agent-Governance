@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { api } from "../../lib/api";
+import { HumanPurgeModal } from "./HumanPurgeModal";
 
 interface AgentDetailProps {
   agentId: string;
@@ -53,14 +55,35 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [actions, setActions] = useState<ActionInfo[]>([]);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [rotatingKey, setRotatingKey] = useState(false);
+  const [newSecret, setNewSecret] = useState<string | null>(null);
+  const [copiedSecret, setCopiedSecret] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const handleRotateKey = async () => {
+    if (!agent) return;
+    try {
+      setRotatingKey(true);
+      const data = await api.rotateAgentCredential(agent.id);
+      setNewSecret(data.plaintext_secret);
+      onAgentStatusChanged();
+    } catch (err) {
+      console.error("Failed to rotate key", err);
+    } finally {
+      setRotatingKey(false);
+    }
+  };
 
   useEffect(() => {
     const fetchDetail = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${apiBaseUrl}/api/v1/monitoring/agents/${agentId}`);
-        if (res.ok) {
-          const data = await res.json();
+        const data = (await api.getAgent(agentId)) as unknown as {
+          agent: AgentInfo;
+          sessions?: SessionInfo[];
+          recent_actions?: ActionInfo[];
+        };
+        if (data && data.agent) {
           setAgent(data.agent);
           setSessions(data.sessions || []);
           setActions(data.recent_actions || []);
@@ -72,25 +95,16 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
       }
     };
     fetchDetail();
-  }, [agentId, apiBaseUrl]);
+  }, [agentId]);
 
   const toggleStatus = async () => {
     if (!agent) return;
     const newStatus = agent.status === "active" ? "suspended" : "active";
     try {
       setUpdatingStatus(true);
-      const res = await fetch(`${apiBaseUrl}/api/v1/agents/${agent.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Email": "security_admin@enterprise.internal",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (res.ok) {
-        setAgent({ ...agent, status: newStatus });
-        onAgentStatusChanged();
-      }
+      await api.updateAgentStatus(agent.id, newStatus);
+      setAgent({ ...agent, status: newStatus });
+      onAgentStatusChanged();
     } catch (err) {
       console.error("Failed to update status", err);
     } finally {
@@ -213,6 +227,53 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
               </div>
             </div>
 
+            {/* Cryptographic Credential Management */}
+            <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "12px 14px", borderRadius: "3px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                    Cryptographic Bearer Secret Key
+                  </div>
+                  <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                    Rotating secret generates a new high-entropy token and immediately deactivates previous active credentials.
+                  </div>
+                </div>
+                <button
+                  id="btn-rotate-agent-key"
+                  className="btn btn-ghost"
+                  onClick={handleRotateKey}
+                  disabled={rotatingKey}
+                  style={{ fontSize: "0.75rem", padding: "5px 12px", border: "1px solid var(--border-rule)", color: "#79C0FF" }}
+                >
+                  {rotatingKey ? "Rotating..." : "🔄 Rotate Secret Key"}
+                </button>
+              </div>
+
+              {newSecret && (
+                <div style={{ marginTop: "10px", padding: "10px 12px", background: "rgba(56, 139, 253, 0.1)", border: "1px solid rgba(56, 139, 253, 0.3)", borderRadius: "3px" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#FFA198", fontWeight: 600, marginBottom: "4px" }}>
+                    ⚠ NEW SECRET GENERATED (SINGLE VIEW — SAVE NOW):
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "#79C0FF", wordBreak: "break-all", background: "var(--canvas-bg)", padding: "6px 8px", borderRadius: "2px" }}>
+                      {newSecret}
+                    </code>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => {
+                        navigator.clipboard.writeText(newSecret);
+                        setCopiedSecret(true);
+                        setTimeout(() => setCopiedSecret(false), 3000);
+                      }}
+                      style={{ fontSize: "0.75rem", padding: "6px 12px", whiteSpace: "nowrap" }}
+                    >
+                      {copiedSecret ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Sessions Table */}
             <div>
               <h3 style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "8px" }}>
@@ -302,6 +363,56 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Human Operator Danger Zone */}
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "14px 16px",
+                background: "rgba(239, 68, 68, 0.05)",
+                border: "1px solid rgba(239, 68, 68, 0.25)",
+                borderRadius: "3px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--danger-fg, #ef4444)", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span>🛡️ HUMAN OPERATOR CONTROL:</span>
+                  <span>Permanently Remove Agent</span>
+                </div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                  Permanently purges agent identity, cascades credentials deletion, and cleans up historical sessions.
+                </div>
+              </div>
+              <button
+                id="btn-remove-agent-detail"
+                className="btn btn-danger"
+                onClick={() => setIsDeleteModalOpen(true)}
+                style={{ fontSize: "0.75rem", padding: "6px 14px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+              >
+                <span>✕</span>
+                <span>Remove Agent Permanently</span>
+              </button>
+            </div>
+
+            {/* Human Purge Confirmation Modal */}
+            <HumanPurgeModal
+              isOpen={isDeleteModalOpen}
+              onClose={() => setIsDeleteModalOpen(false)}
+              title="Permanently Remove Agent Identity"
+              targetDescription={`Agent: ${agent.name} (${agent.id})`}
+              warningNote="This will permanently delete the agent's identity, cryptographic keys, and cancel active runtime sessions. Autonomous agents are strictly blocked from invoking this deletion."
+              actionButtonText="Authorize & Remove Agent"
+              onConfirm={async (rationale) => {
+                await api.deleteAgent(agent.id, rationale);
+                onAgentStatusChanged();
+                onClose();
+              }}
+            />
           </>
         ) : (
           <div style={{ color: "var(--status-block-fg)", textAlign: "center" }}>

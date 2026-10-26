@@ -73,3 +73,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 # Default application instance for ASGI servers (uvicorn)
 app = create_app()
+
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    port = int(os.environ.get("X_ZOHO_CATALYST_LISTEN_PORT", 8000))
+    uvicorn.run("agent_security.main:app", host="0.0.0.0", port=port, reload=False)
+

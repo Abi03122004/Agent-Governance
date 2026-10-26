@@ -29,6 +29,7 @@ class RuntimeDecision(BaseModel):
     correlation_id: str
     execution_authorization: str | None = None
     execution_authorization_expires_at: datetime | None = None
+    approval_ticket_id: str | None = None
 
 
 class ExecuteActionRequest(BaseModel):

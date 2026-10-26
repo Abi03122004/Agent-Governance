@@ -8,6 +8,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    JSON,
     String,
     Text,
 )
@@ -15,6 +16,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from agent_security.db.base import Base
+
+JSONType = JSON().with_variant(JSONB, "postgresql")
 
 
 class ToolModel(Base):
@@ -24,7 +27,7 @@ class ToolModel(Base):
     description = Column(Text, default="", nullable=False)
     risk_level = Column(String(32), default="LOW", nullable=False)
     requires_approval = Column(Boolean, default=False, nullable=False)
-    parameter_schema = Column(JSONB, default=dict, nullable=False)
+    parameter_schema = Column(JSONType, default=dict, nullable=False)
     rate_limit_per_minute = Column(Integer, default=60, nullable=False)
     cost_per_call = Column(Float, default=0.0, nullable=False)
 

@@ -82,7 +82,22 @@ def test_production_accepts_hardened_config():
         DATABASE_URL="postgresql+asyncpg://corp_app:Strong_Pass_987#@prod-db.internal:5432/agent_gov",
         CORS_ORIGINS=["https://governance.corp.com"],
         ENABLE_FAIL_SECURE=True,
+        ALLOW_DEV_HEADER_AUTH=False,
     )
     assert settings.ENVIRONMENT == "production"
     assert settings.DEBUG is False
     assert len(settings.SECRET_KEY) >= 32
+    assert settings.ALLOW_DEV_HEADER_AUTH is False
+
+
+def test_production_rejects_allow_dev_header_auth():
+    """Security Invariant: Insecure dev header auth must fail to start in production."""
+    with pytest.raises(ValidationError) as excinfo:
+        Settings(
+            ENVIRONMENT="production",
+            ALLOW_DEV_HEADER_AUTH=True,
+            SECRET_KEY="a" * 32,
+            DATABASE_URL="postgresql+asyncpg://admin:secure_password_123@prod-db:5432/agent_gov",
+        )
+    assert "Insecure development header authentication" in str(excinfo.value)
+

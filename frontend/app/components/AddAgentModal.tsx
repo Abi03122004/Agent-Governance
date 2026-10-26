@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { getAdminHeaders } from "../../lib/auth";
 
 export interface AddAgentModalProps {
   isOpen: boolean;
@@ -200,8 +201,8 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
     try {
       setIsSubmitting(true);
 
-      // Pre-flight bootstrap: Ensure organization, project, and user exist
-      // so foreign key checks on the backend do not fail if setting up a new tenant/project scope.
+      // Pre-flight bootstrap: Ensure organization, project, user, and membership exist
+      // so multi-tenant and authorization checks on the backend do not fail for new tenants.
       try {
         await fetch(`${apiBaseUrl}/api/v1/organizations`, {
           method: "POST",
@@ -215,14 +216,30 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
         // ignore if exists
       }
 
+      const derivedUserId = `usr_${finalOwner.replace(/[^a-z0-9]/gi, "_").toLowerCase().slice(0, 30)}`;
       try {
         await fetch(`${apiBaseUrl}/api/v1/users`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            id: `usr_${finalOwner.replace(/[^a-z0-9]/gi, "_").toLowerCase().slice(0, 30)}`,
+            id: derivedUserId,
             email: finalOwner,
             display_name: finalOwner.split("@")[0],
+          }),
+        });
+      } catch {
+        // ignore if exists
+      }
+
+      try {
+        await fetch(`${apiBaseUrl}/api/v1/users/memberships`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: `mem_${finalOrgId.slice(0, 20)}_${derivedUserId.slice(0, 20)}_${Date.now().toString().slice(-6)}`,
+            user_id: derivedUserId,
+            organization_id: finalOrgId,
+            role: "administrator",
           }),
         });
       } catch {
@@ -248,6 +265,7 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...getAdminHeaders(),
           "X-User-Email": finalOwner,
         },
         body: JSON.stringify({
@@ -615,15 +633,15 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
             </div>
           </div>
         ) : (
-          /* View 2: Registration Form */
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            {/* View 2: Registration Form */}
             {/* Scope Row: Organization & Project */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
               {/* Organization / Tenant */}
               <div>
                 <label
                   htmlFor="agent-org-id"
-                  style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px", fontFamily: "var(--font-mono)" }}
+                  style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "6px", fontFamily: "var(--font-mono)" }}
                 >
                   ORGANIZATION / TENANT *
                 </label>
@@ -636,24 +654,27 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                   placeholder="e.g. org_enterprise"
                   style={{
                     width: "100%",
-                    background: "#090D13",
-                    border: "1px solid var(--border-rule)",
-                    borderRadius: "3px",
-                    padding: "6px 10px",
-                    color: "var(--text-primary)",
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    padding: "8px 12px",
+                    color: "#0f172a",
                     fontFamily: "var(--font-mono)",
                     fontSize: "0.8125rem",
                     outline: "none",
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                   }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
                 />
               </div>
 
               {/* Project */}
               <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                   <label
                     htmlFor={isCustomProject ? "agent-custom-project-id" : "agent-project-id"}
-                    style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}
+                    style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155", fontFamily: "var(--font-mono)" }}
                   >
                     PROJECT SCOPE *
                   </label>
@@ -664,7 +685,7 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                       style={{
                         background: "none",
                         border: "none",
-                        color: "var(--accent-telegraph)",
+                        color: "var(--accent-primary, #2563eb)",
                         fontSize: "0.7rem",
                         cursor: "pointer",
                         textDecoration: "underline",
@@ -685,15 +706,18 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                     placeholder="e.g. proj_operations"
                     style={{
                       width: "100%",
-                      background: "#090D13",
-                      border: "1px solid var(--border-rule)",
-                      borderRadius: "3px",
-                      padding: "6px 10px",
-                      color: "var(--text-primary)",
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      color: "#0f172a",
                       fontFamily: "var(--font-mono)",
                       fontSize: "0.8125rem",
                       outline: "none",
+                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                     }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
                   />
                 ) : (
                   <select
@@ -703,16 +727,19 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                     disabled={loadingProjects}
                     style={{
                       width: "100%",
-                      background: "#090D13",
-                      border: "1px solid var(--border-rule)",
-                      borderRadius: "3px",
-                      padding: "6px 10px",
-                      color: "var(--text-primary)",
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      color: "#0f172a",
                       fontFamily: "var(--font-mono)",
                       fontSize: "0.8125rem",
                       outline: "none",
                       cursor: "pointer",
+                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                     }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
                   >
                     {availableProjects.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -728,7 +755,7 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
             <div>
               <label
                 htmlFor="agent-name-input"
-                style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}
+                style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}
               >
                 Agent Name *
               </label>
@@ -742,27 +769,30 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                 placeholder="e.g., Finance Reconciliation Agent"
                 style={{
                   width: "100%",
-                  background: "#090D13",
-                  border: "1px solid var(--border-rule)",
-                  borderRadius: "3px",
-                  padding: "6px 10px",
-                  color: "var(--text-primary)",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  padding: "8px 12px",
+                  color: "#0f172a",
                   fontSize: "0.8125rem",
                   outline: "none",
+                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                 }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
               />
             </div>
 
             {/* Agent Machine ID */}
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                 <label
                   htmlFor="agent-id-input"
-                  style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}
+                  style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155", fontFamily: "var(--font-mono)" }}
                 >
                   AGENT MACHINE IDENTIFIER *
                 </label>
-                <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                <span style={{ fontSize: "0.6875rem", color: "#64748b" }}>
                   Lowercase alphanumeric, hyphens
                 </span>
               </div>
@@ -780,25 +810,28 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                 placeholder="e.g., finance-reconciliation-agent"
                 style={{
                   width: "100%",
-                  background: "#090D13",
-                  border: "1px solid var(--border-rule)",
-                  borderRadius: "3px",
-                  padding: "6px 10px",
-                  color: "#79C0FF",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  padding: "8px 12px",
+                  color: "#0f172a",
                   fontFamily: "var(--font-mono)",
                   fontSize: "0.8125rem",
                   outline: "none",
+                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                 }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
               />
             </div>
 
             {/* Owner Email & Environment Row */}
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "14px" }}>
               {/* Owner */}
               <div>
                 <label
                   htmlFor="agent-owner-input"
-                  style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}
+                  style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}
                 >
                   Owner (Security Officer) *
                 </label>
@@ -811,14 +844,17 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                   placeholder="e.g. security_admin@enterprise.internal"
                   style={{
                     width: "100%",
-                    background: "#090D13",
-                    border: "1px solid var(--border-rule)",
-                    borderRadius: "3px",
-                    padding: "6px 10px",
-                    color: "var(--text-primary)",
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    padding: "8px 12px",
+                    color: "#0f172a",
                     fontSize: "0.8125rem",
                     outline: "none",
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                   }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
                 />
               </div>
 
@@ -826,7 +862,7 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
               <div>
                 <label
                   htmlFor="agent-environment-select"
-                  style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}
+                  style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}
                 >
                   Environment *
                 </label>
@@ -836,15 +872,18 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                   onChange={(e) => setEnvironment(e.target.value)}
                   style={{
                     width: "100%",
-                    background: "#090D13",
-                    border: "1px solid var(--border-rule)",
-                    borderRadius: "3px",
-                    padding: "6px 10px",
-                    color: "var(--text-primary)",
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    padding: "8px 12px",
+                    color: "#0f172a",
                     fontSize: "0.8125rem",
                     outline: "none",
                     cursor: "pointer",
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                   }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
                 >
                   <option value="development">Development (dev)</option>
                   <option value="staging">Staging (staging)</option>
@@ -857,7 +896,7 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
             <div>
               <label
                 htmlFor="agent-purpose-input"
-                style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}
+                style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}
               >
                 Capability & Scope Mandate
               </label>
@@ -870,16 +909,19 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                 placeholder="Describe operational mandate and allowed tools..."
                 style={{
                   width: "100%",
-                  background: "#090D13",
-                  border: "1px solid var(--border-rule)",
-                  borderRadius: "3px",
-                  padding: "6px 10px",
-                  color: "var(--text-primary)",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  padding: "8px 12px",
+                  color: "#0f172a",
                   fontSize: "0.8125rem",
                   resize: "vertical",
                   outline: "none",
                   fontFamily: "var(--font-family)",
+                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                 }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
               />
             </div>
 
@@ -890,9 +932,9 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                 justifyContent: "flex-end",
                 alignItems: "center",
                 gap: "10px",
-                borderTop: "1px solid var(--border-rule)",
-                paddingTop: "12px",
-                marginTop: "4px",
+                borderTop: "1px solid #e2e8f0",
+                paddingTop: "14px",
+                marginTop: "6px",
               }}
             >
               <button
@@ -900,7 +942,16 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                 className="btn btn-ghost"
                 onClick={handleClose}
                 disabled={isSubmitting}
-                style={{ fontSize: "0.8125rem" }}
+                style={{
+                  fontSize: "0.8125rem",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid #e2e8f0",
+                  background: "#f8fafc",
+                  color: "#334155",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
               >
                 Cancel
               </button>
@@ -909,7 +960,17 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                 type="submit"
                 className="btn btn-primary"
                 disabled={isSubmitting}
-                style={{ fontSize: "0.8125rem", padding: "6px 16px" }}
+                style={{
+                  fontSize: "0.8125rem",
+                  padding: "8px 18px",
+                  borderRadius: "8px",
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: "pointer",
+                  boxShadow: "0 1px 3px rgba(37, 99, 235, 0.3)",
+                }}
               >
                 {isSubmitting ? "Registering Agent..." : "+ Register & Issue Credentials"}
               </button>

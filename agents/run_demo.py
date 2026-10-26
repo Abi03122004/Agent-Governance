@@ -73,6 +73,30 @@ def ensure_bootstrap():
     except Exception:
         pass
 
+    # 5. Ensure reviewer user & membership (for requester-approver separation)
+    try:
+        requests.post(
+            f"{BASE_URL}/api/v1/users",
+            json={"id": "usr_reviewer", "email": "reviewer@enterprise.internal", "display_name": "Senior Reviewer"},
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+    try:
+        requests.post(
+            f"{BASE_URL}/api/v1/users/memberships",
+            json={
+                "id": "mem_reviewer_01",
+                "user_id": "usr_reviewer",
+                "organization_id": "org_enterprise",
+                "role": "approver",
+            },
+            timeout=5,
+        )
+    except Exception:
+        pass
+
 
 def register_agent(agent_id: str, name: str, purpose: str):
     try:
@@ -87,6 +111,16 @@ def register_agent(agent_id: str, name: str, purpose: str):
                 "environment": "production",
                 "purpose": purpose,
             },
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+    try:
+        requests.patch(
+            f"{BASE_URL}/api/v1/agents/{agent_id}",
+            headers=ADMIN_HEADERS,
+            json={"status": "active"},
             timeout=5,
         )
     except Exception:
@@ -217,6 +251,25 @@ def main():
     print(f"Explanation:     {appr_eval['explanation']}")
     assert appr_eval["decision"] == "REQUIRE_APPROVAL", "Expected REQUIRE_APPROVAL"
     assert appr_eval.get("execution_authorization") is None, "Requires human approval token"
+    print("Enforcement Verified: Production mutation paused awaiting human review.")
+
+    # 6b. Human Approver signs off ticket (requester-approver separation)
+    reviewer_headers = {"X-User-Email": "reviewer@enterprise.internal"}
+    appr_list = requests.get(f"{BASE_URL}/api/v1/approvals?status=PENDING", headers=reviewer_headers, timeout=5).json()
+    if isinstance(appr_list, list):
+        matching_ticket = [t for t in appr_list if t.get("action_id") == appr_eval["action_id"]]
+    else:
+        matching_ticket = []
+    if matching_ticket:
+        t_id = matching_ticket[0]["ticket_id"]
+        sign_resp = requests.post(
+            f"{BASE_URL}/api/v1/approvals/{t_id}/approve",
+            headers=reviewer_headers,
+            json={"rationale": "Approved after staging canary verification"},
+            timeout=5,
+        ).json()
+        print(f" -> Human Approver Sign-off: Ticket {t_id} status is now '{sign_resp.get('status')}'")
+        print(f" -> Execution Token Issued:  {sign_resp.get('execution_authorization', '')[:24]}...")
 
     # Step 7: Suspend Finance Agent -> Attempt action -> SUSPEND
     log_step(7, "Suspend Finance Agent via Kill Switch -> [SUSPEND]")

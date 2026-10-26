@@ -68,3 +68,32 @@ async def get_organization(org_id: str, db: AsyncSession = Depends(get_db)):
         created_at=db_org.created_at,
         updated_at=db_org.updated_at
     )
+
+from agent_security.services.audit_service import AuditService
+
+class OrganizationUpdate(BaseModel):
+    status: str = Field(..., pattern=r"^(active|suspended)$")
+
+@router.patch("/{org_id}", response_model=Organization)
+async def update_organization_status(org_id: str, update_req: OrganizationUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(OrganizationModel).where(OrganizationModel.id == org_id))
+    db_org = result.scalar_one_or_none()
+    if not db_org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    db_org.status = update_req.status
+    await AuditService.record_event(
+        db,
+        organization_id=org_id,
+        event_type="organization.status_updated",
+        severity="WARN" if update_req.status == "suspended" else "INFO",
+        details={"status": update_req.status},
+    )
+    await db.commit()
+    await db.refresh(db_org)
+    return Organization(
+        id=db_org.id,
+        name=db_org.name,
+        status=db_org.status,
+        created_at=db_org.created_at,
+        updated_at=db_org.updated_at,
+    )

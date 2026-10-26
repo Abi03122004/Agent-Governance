@@ -26,7 +26,7 @@ class Project(BaseModel):
     id: str = Field(..., min_length=3, max_length=64, pattern=r"^[a-z0-9\-_]+$")
     organization_id: Optional[str] = Field(default=None, max_length=64)
     name: str = Field(..., min_length=1, max_length=128)
-    status: str = Field(default="active", pattern=r"^(active|archived)$")
+    status: str = Field(default="active", pattern=r"^(active|suspended|archived)$")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

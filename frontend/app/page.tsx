@@ -8,6 +8,12 @@ import { LiveInterceptionFeed, ActivityItem } from "./components/LiveInterceptio
 import { SystemReadinessWidget } from "./components/SystemReadinessWidget";
 import { AgentDetailModal } from "./components/AgentDetailModal";
 import { AddAgentModal } from "./components/AddAgentModal";
+import { ApprovalQueueWidget } from "./components/ApprovalQueueWidget";
+import { AuditLedgerWidget } from "./components/AuditLedgerWidget";
+import { PolicyEnforcementView } from "./components/PolicyEnforcementView";
+import { HumanPurgeModal } from "./components/HumanPurgeModal";
+import { api } from "../lib/api";
+import { getAuthContext } from "../lib/auth";
 
 interface StatsData {
   active_agents: number;
@@ -55,7 +61,7 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
   const [isKilled, setIsKilled] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [isAddAgentModalOpen, setIsAddAgentModalOpen] = useState(false);
-  const [selectedTenant, setSelectedTenant] = useState("org_enterprise");
+  const [selectedTenant, setSelectedTenant] = useState("");
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -72,71 +78,81 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
   });
 
   const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
   const [agents, setAgents] = useState<MonitoredAgent[]>([]);
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [policies, setPolicies] = useState<PolicyRule[]>([]);
   const [isWsConnected, setIsWsConnected] = useState(false);
 
-  // Fetch functions
+  // Fetch functions with tenant isolation scope
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBase}/api/v1/monitoring/stats`);
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
+      const data = await api.getStats(selectedTenant || undefined);
+      if (data) {
+        setStats(data as unknown as StatsData);
       }
     } catch {
       // offline or initial load
     }
-  }, [apiBase]);
+  }, [selectedTenant]);
 
   const fetchActivities = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBase}/api/v1/monitoring/activity?limit=100`);
-      if (res.ok) {
-        const data = await res.json();
-        setActivities(data);
+      const data = await api.getActivity(100, selectedTenant || undefined);
+      if (Array.isArray(data)) {
+        setActivities(data as unknown as ActivityItem[]);
       }
     } catch {
       // offline
     }
-  }, [apiBase]);
+  }, [selectedTenant]);
 
   const fetchAgents = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBase}/api/v1/monitoring/agents`);
-      if (res.ok) {
-        const data = await res.json();
-        setAgents(data);
+      const data = await api.getAgents(selectedTenant || undefined);
+      if (Array.isArray(data)) {
+        const unique = Array.from(
+          new Map(
+            (data as unknown as MonitoredAgent[])
+              .filter((a) => a && a.agent_id)
+              .map((a) => [a.agent_id, a])
+          ).values()
+        );
+        setAgents(unique);
       }
     } catch {
       // offline
     }
-  }, [apiBase]);
+  }, [selectedTenant]);
 
   const fetchSessions = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBase}/api/v1/sessions`);
-      if (res.ok) {
-        const data = await res.json();
-        setSessions(data);
+      const data = await api.getSessions(selectedTenant || undefined);
+      if (Array.isArray(data)) {
+        const unique = Array.from(
+          new Map(
+            (data as unknown as SessionData[])
+              .filter((s) => s && s.session_id)
+              .map((s) => [s.session_id, s])
+          ).values()
+        );
+        setSessions(unique);
       }
     } catch {
       // offline
     }
-  }, [apiBase]);
+  }, [selectedTenant]);
 
   const fetchPolicies = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBase}/api/v1/monitoring/policies`);
-      if (res.ok) {
-        const data = await res.json();
-        setPolicies(data);
+      const data = await api.getPolicies(selectedTenant || undefined);
+      if (Array.isArray(data)) {
+        setPolicies(data as unknown as PolicyRule[]);
       }
     } catch {
       // offline
     }
-  }, [apiBase]);
+  }, [selectedTenant]);
 
   const refreshAll = useCallback(() => {
     fetchStats();
@@ -160,19 +176,40 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
 
   // WebSocket Live Stream
   useEffect(() => {
-    const wsUrl = apiBase.replace(/^http/, "ws") + "/api/v1/monitoring/ws/activity";
+    let isCancelled = false;
     let ws: WebSocket | null = null;
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
+    const authCtx = getAuthContext();
+    const params = new URLSearchParams();
+    if (selectedTenant) {
+      params.set("organization_id", selectedTenant);
+    } else if (authCtx.organizationId) {
+      params.set("organization_id", authCtx.organizationId);
+    }
+    if (authCtx.token) {
+      params.set("token", authCtx.token);
+    } else if (authCtx.userEmail) {
+      params.set("user_email", authCtx.userEmail);
+    }
+    const queryString = params.toString();
+    const wsUrl = `${apiBase.replace(/^http/, "ws")}/api/v1/monitoring/ws/activity${queryString ? `?${queryString}` : ""}`;
+
     const connectWs = () => {
+      if (isCancelled) return;
       try {
         ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
+          if (isCancelled) {
+            ws?.close();
+            return;
+          }
           setIsWsConnected(true);
         };
 
         ws.onmessage = (event) => {
+          if (isCancelled) return;
           try {
             const raw = JSON.parse(event.data);
             const newAct: ActivityItem = {
@@ -189,7 +226,10 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
               correlation_id: raw.correlation_id,
             };
 
-            setActivities((prev) => [newAct, ...prev.slice(0, 99)]);
+            setActivities((prev) => {
+              if (prev.some((a) => a.action_id === newAct.action_id)) return prev;
+              return [newAct, ...prev.slice(0, 99)];
+            });
             fetchStats();
             fetchAgents();
           } catch (e) {
@@ -199,7 +239,9 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
 
         ws.onclose = () => {
           setIsWsConnected(false);
-          reconnectTimeout = setTimeout(connectWs, 5000);
+          if (!isCancelled) {
+            reconnectTimeout = setTimeout(connectWs, 5000);
+          }
         };
 
         ws.onerror = () => {
@@ -213,10 +255,23 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
     connectWs();
 
     return () => {
-      if (ws) ws.close();
+      isCancelled = true;
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (ws) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        } else if (ws.readyState === WebSocket.CONNECTING) {
+          ws.onopen = () => {
+            try {
+              ws?.close();
+            } catch {
+              // ignore
+            }
+          };
+        }
+      }
     };
-  }, [apiBase, fetchStats, fetchAgents]);
+  }, [apiBase, selectedTenant, fetchStats, fetchAgents]);
 
   // Emergency Kill Switch Toggle
   const toggleKillSwitch = async () => {
@@ -228,14 +283,7 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
       for (const ag of agents) {
         if (ag.status === "active") {
           try {
-            await fetch(`${apiBase}/api/v1/agents/${ag.agent_id}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                "X-User-Email": "security_admin@enterprise.internal",
-              },
-              body: JSON.stringify({ status: "suspended" }),
-            });
+            await api.suspendAgent(ag.agent_id);
           } catch {
             // ignore
           }
@@ -248,14 +296,7 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
   const toggleAgentStatus = async (agentId: string, currentStatus: string) => {
     const nextStatus = currentStatus === "active" ? "suspended" : "active";
     try {
-      await fetch(`${apiBase}/api/v1/agents/${agentId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Email": "security_admin@enterprise.internal",
-        },
-        body: JSON.stringify({ status: nextStatus }),
-      });
+      await api.updateAgentStatus(agentId, nextStatus);
       refreshAll();
     } catch (e) {
       console.error("Failed to update status", e);
@@ -289,18 +330,127 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
     }
   };
 
+  // Human Operator Data Purge Modal State & Handlers
+  interface PurgeModalState {
+    isOpen: boolean;
+    title: string;
+    targetDescription: string;
+    warningNote: string;
+    actionButtonText?: string;
+    onConfirm: (rationale: string) => Promise<void>;
+  }
+
+  const [purgeModal, setPurgeModal] = useState<PurgeModalState>({
+    isOpen: false,
+    title: "",
+    targetDescription: "",
+    warningNote: "",
+    onConfirm: async () => {},
+  });
+
+  const handleRemoveAgent = (agent: MonitoredAgent) => {
+    setPurgeModal({
+      isOpen: true,
+      title: "Remove Agent Identity",
+      targetDescription: `Agent: ${agent.name} (${agent.agent_id})`,
+      warningNote: "Permanently removes the agent identity, cryptographic credentials, active sessions, and unlinks activity records. Autonomous agents cannot perform this.",
+      actionButtonText: "Authorize & Remove Agent",
+      onConfirm: async (rationale) => {
+        await api.deleteAgent(agent.agent_id, rationale);
+        refreshAll();
+      },
+    });
+  };
+
+  const handlePurgeInactiveAgents = () => {
+    setPurgeModal({
+      isOpen: true,
+      title: "Purge Inactive Agent Identities",
+      targetDescription: selectedTenant ? `Suspended Agents in ${selectedTenant}` : "All Suspended & Revoked Agents",
+      warningNote: "Permanently removes all suspended and inactive agent credentials and registrations across the selected scope. Active agents are preserved.",
+      actionButtonText: "Authorize & Purge Inactive",
+      onConfirm: async (rationale) => {
+        await api.purgeInactiveAgents(selectedTenant || undefined, rationale);
+        refreshAll();
+      },
+    });
+  };
+
+  const handleClearSessions = () => {
+    setPurgeModal({
+      isOpen: true,
+      title: "Clear Session History",
+      targetDescription: selectedTenant ? `Tenant ${selectedTenant} Sessions` : "Global Session History (All Tenants)",
+      warningNote: "Permanently deletes recorded runtime agent sessions and terminates any active token contexts.",
+      actionButtonText: "Authorize & Clear Sessions",
+      onConfirm: async (rationale) => {
+        await api.clearSessions(selectedTenant || undefined, rationale);
+        fetchSessions();
+      },
+    });
+  };
+
+  const isAllActivitiesSelected = activities.length > 0 && selectedActivities.size === activities.length;
+
+  const toggleSelectAllActivities = () => {
+    if (isAllActivitiesSelected) {
+      setSelectedActivities(new Set());
+    } else {
+      setSelectedActivities(new Set(activities.map((a) => a.action_id)));
+    }
+  };
+
+  const toggleSelectActivity = (actionId: string) => {
+    setSelectedActivities((prev) => {
+      const next = new Set(prev);
+      if (next.has(actionId)) {
+        next.delete(actionId);
+      } else {
+        next.add(actionId);
+      }
+      return next;
+    });
+  };
+
+  const handleDeleteSelectedActivities = async () => {
+    if (selectedActivities.size === 0) return;
+    const idsToDelete = Array.from(selectedActivities);
+    try {
+      await api.deleteActivities(idsToDelete, selectedTenant || undefined);
+      setActivities((prev) => prev.filter((a) => !selectedActivities.has(a.action_id)));
+      setSelectedActivities(new Set());
+      fetchStats();
+    } catch (e) {
+      console.error("Failed to delete selected activities", e);
+    }
+  };
+
+  const handleClearRuntimeActivity = () => {
+    setPurgeModal({
+      isOpen: true,
+      title: "Clear Mediated Activity History",
+      targetDescription: selectedTenant ? `Tenant ${selectedTenant} Runtime Activity` : "Global Runtime Activity Stream",
+      warningNote: "Permanently deletes all historical interception events, policy decisions, and pending approvals.",
+      actionButtonText: "Authorize & Clear Activity",
+      onConfirm: async (rationale) => {
+        await api.clearRuntimeActivity(selectedTenant || undefined, rationale);
+        setActivities([]);
+        setSelectedActivities(new Set());
+        fetchStats();
+      },
+    });
+  };
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "var(--canvas-bg)" }}>
+    <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden", background: "var(--canvas-bg)" }}>
       {/* 1. Left Fixed Navigation Sidebar */}
       <Sidebar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
-        activeAgentsCount={stats.active_agents}
-        blockedCount={stats.blocked}
       />
 
       {/* 2. Main Content Area */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, height: "100vh", overflowY: "auto" }}>
         <Header
           onTriggerKillSwitch={toggleKillSwitch}
           isKilled={isKilled}
@@ -344,15 +494,77 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
           {/* TAB 1: OVERVIEW / DASHBOARD */}
           {activeTab === "overview" && (
             <>
+              {/* Header Greeting Banner matching screenshot */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "space-between",
+                  marginBottom: "4px",
+                  flexWrap: "wrap",
+                  gap: "14px",
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: "0.8125rem",
+                      color: "#64748b",
+                      fontWeight: 500,
+                      marginBottom: "3px",
+                    }}
+                  >
+                    Good afternoon,
+                  </div>
+                  <h2
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      letterSpacing: "-0.025em",
+                      lineHeight: 1.2,
+                      margin: 0,
+                    }}
+                  >
+                    Control AI Usage. Ensure Compliance.
+                  </h2>
+                  <div
+                    style={{
+                      fontSize: "0.8125rem",
+                      color: "#64748b",
+                      marginTop: "4px",
+                    }}
+                  >
+                    Create, manage, and enforce AI policies across your organization.
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    id="btn-quick-create-policy"
+                    className="btn btn-primary"
+                    onClick={() => setActiveTab("policies")}
+                    style={{
+                      padding: "9px 18px",
+                      borderRadius: "10px",
+                      fontSize: "0.8125rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    + Create Policy
+                  </button>
+                </div>
+              </div>
+
               {/* Section: Overview Metrics */}
-              <section id="metrics-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "10px" }}>
+              <section id="metrics-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px" }}>
                 <StatCard
                   id="stat-active-agents"
                   title="Active Agents"
                   value={stats.active_agents}
                   subtitle="Autonomous identities active"
                   icon="🤖"
-                  accentColor="var(--accent-telegraph)"
+                  accentColor="#2563eb"
                 />
                 <StatCard
                   id="stat-actions-today"
@@ -360,7 +572,7 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                   value={stats.actions_today}
                   subtitle="Evaluated at gateway"
                   icon="⚡"
-                  accentColor="var(--accent-telegraph)"
+                  accentColor="#7c3aed"
                 />
                 <StatCard
                   id="stat-allowed"
@@ -368,7 +580,7 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                   value={stats.allowed}
                   subtitle="Passed policy constraints"
                   icon="✅"
-                  accentColor="var(--status-allow-fg)"
+                  accentColor="#059669"
                 />
                 <StatCard
                   id="stat-blocked"
@@ -376,7 +588,7 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                   value={stats.blocked}
                   subtitle="Zero tool execution"
                   icon="🛡️"
-                  accentColor="var(--status-block-fg)"
+                  accentColor="#dc2626"
                 />
                 <StatCard
                   id="stat-pending-approval"
@@ -384,7 +596,7 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                   value={stats.pending_approval}
                   subtitle="Escalated to human reviewer"
                   icon="⏳"
-                  accentColor="var(--status-approval-fg)"
+                  accentColor="#d97706"
                 />
                 <StatCard
                   id="stat-suspended"
@@ -392,7 +604,7 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                   value={stats.suspended}
                   subtitle="Frozen identities & actions"
                   icon="🛑"
-                  accentColor="var(--status-suspend-fg)"
+                  accentColor="#ea580c"
                 />
               </section>
 
@@ -402,6 +614,9 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                 onSelectAgent={(aid) => setSelectedAgentId(aid)}
                 isLive={isWsConnected}
               />
+
+              {/* Section: Human Approvals Queue */}
+              <ApprovalQueueWidget tenantId={selectedTenant || undefined} />
 
               {/* Section: Infrastructure Health & Readiness */}
               <SystemReadinessWidget />
@@ -425,6 +640,15 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                     Refresh
                   </button>
                   <button
+                    id="btn-purge-inactive-agents"
+                    className="btn btn-ghost"
+                    onClick={handlePurgeInactiveAgents}
+                    style={{ fontSize: "0.75rem", padding: "5px 10px", color: "var(--danger-fg, #ef4444)", borderColor: "rgba(239, 68, 68, 0.3)" }}
+                    title="Human Operator only: Purge all suspended/revoked agent identities"
+                  >
+                    Purge Inactive
+                  </button>
+                  <button
                     id="btn-add-agent"
                     className="btn btn-primary"
                     onClick={() => setIsAddAgentModalOpen(true)}
@@ -438,7 +662,7 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
               {agents.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "36px", color: "var(--text-muted)", border: "1px dashed var(--border-rule)", borderRadius: "3px" }}>
                   <p style={{ marginBottom: "12px", fontSize: "0.8125rem" }}>
-                    No agents registered yet. Run the multi-agent simulation scripts or register via API.
+                    No agents registered yet for this tenant scope. Click &quot;+ Add Agent&quot; above to register and connect your first external agent.
                   </p>
                   <button
                     id="btn-add-agent-empty"
@@ -512,6 +736,20 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                               >
                                 {ag.status === "active" ? "Suspend" : "Activate"}
                               </button>
+                              <button
+                                id={`btn-remove-agent-${ag.agent_id}`}
+                                className="btn btn-ghost"
+                                onClick={() => handleRemoveAgent(ag)}
+                                style={{
+                                  padding: "4px 8px",
+                                  fontSize: "0.75rem",
+                                  color: "var(--danger-fg, #ef4444)",
+                                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                                }}
+                                title="Human Operator only: Permanently remove agent"
+                              >
+                                Remove
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -535,9 +773,20 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                     Sessions are established via authenticated credentials. Actions must belong to an active session.
                   </div>
                 </div>
-                <button className="btn btn-ghost" onClick={fetchSessions} style={{ fontSize: "0.75rem", padding: "5px 10px" }}>
-                  Refresh
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <button className="btn btn-ghost" onClick={fetchSessions} style={{ fontSize: "0.75rem", padding: "5px 10px" }}>
+                    Refresh
+                  </button>
+                  <button
+                    id="btn-clear-sessions"
+                    className="btn btn-danger"
+                    onClick={handleClearSessions}
+                    style={{ fontSize: "0.75rem", padding: "5px 12px" }}
+                    title="Human Operator only: Clear session history"
+                  >
+                    Clear History
+                  </button>
+                </div>
               </div>
 
               {sessions.length === 0 ? (
@@ -598,9 +847,40 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                     Pre-execution policy evaluations with cryptographically deterministic action digests.
                   </div>
                 </div>
-                <button className="btn btn-ghost" onClick={fetchActivities} style={{ fontSize: "0.75rem", padding: "5px 10px" }}>
-                  Refresh
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {selectedActivities.size > 0 && (
+                    <button
+                      id="btn-delete-selected-activities"
+                      className="btn btn-danger"
+                      onClick={handleDeleteSelectedActivities}
+                      style={{
+                        fontSize: "0.75rem",
+                        padding: "5px 12px",
+                        background: "#dc2626",
+                        color: "#ffffff",
+                        border: "1px solid #b91c1c",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                      title="Delete specifically selected activity records"
+                    >
+                      Delete Selected ({selectedActivities.size})
+                    </button>
+                  )}
+                  <button className="btn btn-ghost" onClick={fetchActivities} style={{ fontSize: "0.75rem", padding: "5px 10px" }}>
+                    Refresh
+                  </button>
+                  <button
+                    id="btn-clear-runtime-activity"
+                    className="btn btn-danger"
+                    onClick={handleClearRuntimeActivity}
+                    style={{ fontSize: "0.75rem", padding: "5px 12px" }}
+                    title="Human Operator only: Clear mediated activity stream"
+                  >
+                    Clear History
+                  </button>
+                </div>
               </div>
 
               {activities.length === 0 ? (
@@ -612,6 +892,17 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem", textAlign: "left" }}>
                     <thead>
                       <tr style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-rule)" }}>
+                        <th style={{ padding: "8px 12px", width: "36px", textAlign: "center" }}>
+                          <input
+                            type="checkbox"
+                            id="select-all-activities-checkbox"
+                            checked={isAllActivitiesSelected}
+                            onChange={toggleSelectAllActivities}
+                            style={{ cursor: "pointer", width: "15px", height: "15px", accentColor: "#2563eb" }}
+                            title={isAllActivitiesSelected ? "Deselect all" : "Select all activities"}
+                            aria-label="Select all activities"
+                          />
+                        </th>
                         <th style={{ padding: "8px 12px" }}>Time</th>
                         <th style={{ padding: "8px 12px" }}>Agent</th>
                         <th style={{ padding: "8px 12px" }}>Tool & Op</th>
@@ -623,7 +914,24 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                     </thead>
                     <tbody>
                       {activities.map((act) => (
-                        <tr key={act.action_id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <tr
+                          key={act.action_id}
+                          style={{
+                            borderBottom: "1px solid var(--border-subtle)",
+                            background: selectedActivities.has(act.action_id) ? "rgba(37, 99, 235, 0.05)" : undefined,
+                            transition: "background 0.15s ease",
+                          }}
+                        >
+                          <td style={{ padding: "8px 12px", width: "36px", textAlign: "center" }}>
+                            <input
+                              type="checkbox"
+                              id={`select-activity-${act.action_id}`}
+                              checked={selectedActivities.has(act.action_id)}
+                              onChange={() => toggleSelectActivity(act.action_id)}
+                              style={{ cursor: "pointer", width: "15px", height: "15px", accentColor: "#2563eb" }}
+                              aria-label={`Select activity ${act.action_id}`}
+                            />
+                          </td>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>
                             {new Date(act.timestamp).toLocaleTimeString()}
                           </td>
@@ -676,64 +984,14 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
 
           {/* TAB 5: POLICIES */}
           {activeTab === "policies" && (
-            <section className="glass-panel" style={{ padding: "18px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-                <div>
-                  <h2 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                    Deterministic Policy Engine Rules
-                  </h2>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px", maxWidth: "70ch" }}>
-                    Policies are evaluated before any tool execution. No non-deterministic LLMs sit on the enforcement boundary.
-                  </div>
-                </div>
-                <span className="code-pill">
-                  ENGINE: ACTIVE
-                </span>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "10px" }}>
-                {policies.map((p) => (
-                  <div
-                    key={p.id}
-                    style={{
-                      background: "var(--surface-plate)",
-                      border: "1px solid var(--border-rule)",
-                      borderRadius: "3px",
-                      padding: "14px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "8px",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: "0.85rem" }}>
-                        {p.name}
-                      </span>
-                      <span className={`badge ${getBadgeClass(p.decision)}`}>
-                        {p.decision}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: "1.4", maxWidth: "60ch" }}>
-                      {p.description}
-                    </div>
-
-                    <div style={{ background: "#090D13", padding: "6px 8px", borderRadius: "3px", border: "1px solid var(--border-rule)" }}>
-                      <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>Condition</div>
-                      <code style={{ fontSize: "0.75rem", color: "#79C0FF", fontFamily: "var(--font-mono)" }}>
-                        {p.condition}
-                      </code>
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)", marginTop: "2px" }}>
-                      <span>Rule: {p.id}</span>
-                      <span>Priority: #{p.priority}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+            <PolicyEnforcementView initialRules={policies} />
           )}
+
+          {/* TAB: APPROVALS */}
+          {activeTab === "approvals" && <ApprovalQueueWidget tenantId={selectedTenant || undefined} />}
+
+          {/* TAB: AUDIT LEDGER */}
+          {activeTab === "audit" && <AuditLedgerWidget tenantId={selectedTenant || undefined} />}
 
           {/* TAB 6: HEALTH */}
           {activeTab === "health" && <SystemReadinessWidget />}
@@ -757,6 +1015,17 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
         apiBaseUrl={apiBase}
         currentTenant={selectedTenant}
         onAgentRegistered={handleAgentRegistered}
+      />
+
+      {/* Human Operator Purge Confirmation Modal */}
+      <HumanPurgeModal
+        isOpen={purgeModal.isOpen}
+        onClose={() => setPurgeModal((prev) => ({ ...prev, isOpen: false }))}
+        title={purgeModal.title}
+        targetDescription={purgeModal.targetDescription}
+        warningNote={purgeModal.warningNote}
+        actionButtonText={purgeModal.actionButtonText}
+        onConfirm={purgeModal.onConfirm}
       />
     </div>
   );

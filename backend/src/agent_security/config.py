@@ -58,6 +58,11 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
     )
 
+    ALLOW_DEV_HEADER_AUTH: bool = Field(
+        default=False,
+        description="Explicit development switch to permit X-User-Email dev header auth. Strictly forbidden in production.",
+    )
+
     @field_validator("CORS_ORIGINS", mode="after")
     @classmethod
     def parse_cors_origins(cls, v):
@@ -96,6 +101,13 @@ class Settings(BaseSettings):
             if "postgres:postgres" in self.DATABASE_URL:
                 raise ValueError(
                     "SECURITY VIOLATION: Default database credentials (postgres:postgres) are not permitted in production."
+                )
+
+            # 6. Insecure dev header authentication strictly forbidden in production
+            if self.ALLOW_DEV_HEADER_AUTH:
+                raise ValueError(
+                    "SECURITY VIOLATION: Insecure development header authentication "
+                    "(ALLOW_DEV_HEADER_AUTH) is strictly forbidden in production."
                 )
 
         return self

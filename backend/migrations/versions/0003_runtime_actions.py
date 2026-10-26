@@ -25,13 +25,13 @@ def upgrade() -> None:
         sa.Column("tool", sa.String(64), nullable=False),
         sa.Column("operation", sa.String(64), nullable=False),
         sa.Column("resource", sa.String(256), nullable=False),
-        sa.Column("normalized_action", postgresql.JSONB(), nullable=False),
+        sa.Column("normalized_action", sa.JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=False),
         sa.Column("action_digest", sa.String(80), nullable=False),
         sa.Column("decision", sa.String(32), nullable=False),
         sa.Column("reason_code", sa.String(64), nullable=False),
         sa.Column("correlation_id", sa.String(128), nullable=False),
         sa.Column("execution_status", sa.String(32), nullable=False, server_default="not_executed"),
-        sa.Column("result", postgresql.JSONB(), nullable=True),
+        sa.Column("result", sa.JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index("ix_runtime_actions_organization_id", "runtime_actions", ["organization_id"])

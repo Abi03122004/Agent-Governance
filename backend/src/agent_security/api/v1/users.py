@@ -99,3 +99,38 @@ async def assign_role(membership: MembershipCreate, db: AsyncSession = Depends(g
         role=db_mem.role,
         created_at=db_mem.created_at
     )
+
+
+from agent_security.security.authentication import create_user_token
+
+class TokenRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=256)
+    expires_in_seconds: Optional[int] = Field(3600, ge=60, le=86400)
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "Bearer"
+    user_id: str
+    email: str
+    expires_in_seconds: int
+
+@router.post("/auth/token", response_model=TokenResponse)
+async def issue_token(payload: TokenRequest, db: AsyncSession = Depends(get_db)):
+    """Issue a cryptographically signed Bearer JWT token for an active user."""
+    result = await db.execute(
+        select(UserModel).where(UserModel.email == payload.email, UserModel.status == "active")
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Active user not found")
+
+    ttl = payload.expires_in_seconds or 3600
+    token = create_user_token(user_id=user.id, email=user.email, expires_in_seconds=ttl)
+    return TokenResponse(
+        access_token=token,
+        token_type="Bearer",
+        user_id=user.id,
+        email=user.email,
+        expires_in_seconds=ttl,
+    )
+

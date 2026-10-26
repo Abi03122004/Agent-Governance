@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_security.db.models.runtime_activity import RuntimeActionModel
 from agent_security.db.models.agent import AgentModel
+from agent_security.db.models.approval import ApprovalRequestModel
 from agent_security.services.realtime import get_realtime_hub
 
 
@@ -27,8 +28,8 @@ class MonitoringService:
         ).scalar_one() or 0
         pending_approval = (
             await db.execute(
-                select(func.count(RuntimeActionModel.id)).where(
-                    RuntimeActionModel.decision == "REQUIRE_APPROVAL"
+                select(func.count(ApprovalRequestModel.ticket_id)).where(
+                    ApprovalRequestModel.status == "PENDING"
                 )
             )
         ).scalar_one() or 0

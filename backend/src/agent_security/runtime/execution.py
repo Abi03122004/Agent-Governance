@@ -11,7 +11,7 @@ def execute_safe_action(
     """Execute permitted harmless action with zero side effect."""
     if decision != "ALLOW":
         raise ValueError("Only ALLOWED actions are permitted to execute.")
-    if normalized.get("tool") not in {"safe_echo", "database", "file"}:
+    if normalized.get("tool") not in {"safe_echo", "database", "file", "kubernetes"}:
         raise ValueError(f"Tool {normalized.get('tool')} is not authorized for demonstration execution.")
     return {
         "message": "safe tool executed",

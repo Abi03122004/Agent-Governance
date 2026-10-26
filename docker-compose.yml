@@ -45,8 +45,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/agent_governance
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      ALLOW_DEV_HEADER_AUTH: "true"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/migrations:/app/migrations
     ports:
       - "8000:8000"
+    command: ["uvicorn", "agent_security.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     depends_on:
       postgres:
         condition: service_healthy
