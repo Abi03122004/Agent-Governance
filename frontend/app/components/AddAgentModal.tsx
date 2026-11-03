@@ -32,6 +32,12 @@ interface ProjectOption {
   organization_id: string;
 }
 
+interface OrgOption {
+  id: string;
+  name: string;
+  status?: string;
+}
+
 export const AddAgentModal: React.FC<AddAgentModalProps> = ({
   isOpen,
   onClose,
@@ -47,11 +53,20 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
   const [environment, setEnvironment] = useState("development");
   const [purpose, setPurpose] = useState("");
   const [organizationId, setOrganizationId] = useState(currentTenant || "org_enterprise");
+  const [isCustomOrg, setIsCustomOrg] = useState(false);
   const [projectId, setProjectId] = useState("proj_operations");
   const [isCustomProject, setIsCustomProject] = useState(false);
   const [customProjectId, setCustomProjectId] = useState("");
 
-  // Projects list for tenant
+  // External Agent & LLM Provider Fields
+  const [framework, setFramework] = useState("custom");
+  const [llmProvider, setLlmProvider] = useState("openai");
+  const [defaultModel, setDefaultModel] = useState("gpt-4o-mini");
+  const [providerApiKey, setProviderApiKey] = useState("");
+
+  // Organizations & Projects lists
+  const [availableOrgs, setAvailableOrgs] = useState<OrgOption[]>([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [availableProjects, setAvailableProjects] = useState<ProjectOption[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
 
@@ -69,6 +84,11 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
       environment: string;
       owner: string;
       status: string;
+      framework?: string;
+      llm_provider?: string;
+      default_model?: string;
+      provider_key_configured?: boolean;
+      key_fingerprint?: string | null;
     };
     credential?: {
       id: string;
@@ -78,6 +98,7 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
 
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [activeSnippetTab, setActiveSnippetTab] = useState<"python" | "langgraph" | "crewai" | "autogen" | "openhands">("python");
 
   // Sync organization when currentTenant changes without triggering cascading renders
   const [prevTenant, setPrevTenant] = useState(currentTenant);
@@ -86,45 +107,76 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
     setOrganizationId(currentTenant);
   }
 
-  // Load existing projects for current organization
+  // Load existing organizations when modal opens
   useEffect(() => {
     let ignore = false;
-    if (isOpen && organizationId) {
-      const controller = new AbortController();
-      fetch(`${apiBaseUrl}/api/v1/projects?organization_id=${encodeURIComponent(organizationId)}`, {
-        signal: controller.signal,
-      })
-        .then((res) => (res.ok ? res.json() : []))
-        .then((data: ProjectOption[]) => {
+    if (!isOpen) return;
+
+    const loadOrgs = async () => {
+      try {
+        setLoadingOrgs(true);
+        const res = await fetch(`${apiBaseUrl}/api/v1/organizations`, {
+          headers: { ...getAdminHeaders() },
+        });
+        if (res.ok) {
+          const data: OrgOption[] = await res.json();
           if (!ignore) {
-            setAvailableProjects(data || []);
-            if (data && data.length > 0) {
+            setAvailableOrgs(data);
+            if (data.length > 0 && !data.some((o) => o.id === organizationId)) {
+              setOrganizationId(data[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load organizations:", err);
+      } finally {
+        if (!ignore) setLoadingOrgs(false);
+      }
+    };
+
+    loadOrgs();
+    return () => {
+      ignore = true;
+    };
+  }, [isOpen, apiBaseUrl]);
+
+  // Load projects whenever selected organization changes
+  useEffect(() => {
+    let ignore = false;
+    if (!isOpen || !organizationId || isCustomOrg) return;
+
+    const loadProjects = async () => {
+      try {
+        setLoadingProjects(true);
+        const res = await fetch(`${apiBaseUrl}/api/v1/projects?organization_id=${organizationId}`, {
+          headers: { ...getAdminHeaders() },
+        });
+        if (res.ok) {
+          const data: ProjectOption[] = await res.json();
+          if (!ignore) {
+            setAvailableProjects(data);
+            if (data.length > 0) {
               setProjectId(data[0].id);
               setIsCustomProject(false);
             } else {
               setIsCustomProject(true);
-              setCustomProjectId("proj_operations");
+              setCustomProjectId("proj_default");
             }
-            setLoadingProjects(false);
           }
-        })
-        .catch((err: unknown) => {
-          if (!ignore && !(err instanceof DOMException && err.name === "AbortError")) {
-            setAvailableProjects([]);
-            setIsCustomProject(true);
-            setCustomProjectId("proj_operations");
-            setLoadingProjects(false);
-          }
-        });
+        }
+      } catch (err) {
+        console.error("Failed to load projects:", err);
+      } finally {
+        if (!ignore) setLoadingProjects(false);
+      }
+    };
 
-      return () => {
-        ignore = true;
-        controller.abort();
-      };
-    }
-  }, [isOpen, organizationId, apiBaseUrl]);
+    loadProjects();
+    return () => {
+      ignore = true;
+    };
+  }, [isOpen, organizationId, isCustomOrg, apiBaseUrl]);
 
-  // Automatically slugify name into agentId if not manually edited
   const handleNameChange = (val: string) => {
     setName(val);
     if (!agentIdTouched) {
@@ -138,7 +190,6 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
   };
 
   const handleClose = () => {
-    // Clear sensitive state from memory upon closing
     setSuccessData(null);
     setCopiedSecret(false);
     setShowSecret(false);
@@ -147,6 +198,7 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
     setAgentId("");
     setAgentIdTouched(false);
     setPurpose("");
+    setProviderApiKey("");
     setIsSubmitting(false);
     onClose();
   };
@@ -157,7 +209,6 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
       setCopiedSecret(true);
       setTimeout(() => setCopiedSecret(false), 3000);
     } catch {
-      // Fallback
       setCopiedSecret(false);
     }
   };
@@ -167,12 +218,11 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
     setErrorMessage(null);
 
     const finalAgentId = agentId.trim().toLowerCase();
-    const finalProjectId = isCustomProject ? customProjectId.trim() : projectId.trim();
-    const finalOrgId = organizationId.trim();
+    const finalProjectId = (isCustomProject ? customProjectId : projectId).trim().toLowerCase();
+    const finalOrgId = organizationId.trim().toLowerCase();
     const finalOwner = owner.trim();
     const finalName = name.trim();
 
-    // Client-side validations matching backend constraints
     if (!finalName) {
       setErrorMessage("Agent name is required.");
       return;
@@ -188,84 +238,120 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
       return;
     }
 
-    if (!finalOwner || !finalOwner.includes("@")) {
-      setErrorMessage("A valid owner email address is required.");
+    if (!finalOrgId || finalOrgId.length < 3) {
+      setErrorMessage("Organization / Tenant ID must be at least 3 characters long.");
       return;
     }
 
-    if (!finalProjectId) {
-      setErrorMessage("Project is required.");
+    if (!/^[a-z0-9\-_]+$/.test(finalOrgId)) {
+      setErrorMessage("Organization / Tenant ID may only contain lowercase alphanumeric characters, hyphens, and underscores.");
+      return;
+    }
+
+    if (!finalProjectId || finalProjectId.length < 3) {
+      setErrorMessage("Project Scope ID must be at least 3 characters long.");
+      return;
+    }
+
+    if (!/^[a-z0-9\-_]+$/.test(finalProjectId)) {
+      setErrorMessage("Project Scope ID may only contain lowercase alphanumeric characters, hyphens, and underscores.");
+      return;
+    }
+
+    if (!finalOwner || !finalOwner.includes("@")) {
+      setErrorMessage("A valid owner email address is required.");
       return;
     }
 
     try {
       setIsSubmitting(true);
 
-      // Pre-flight bootstrap: Ensure organization, project, user, and membership exist
-      // so multi-tenant and authorization checks on the backend do not fail for new tenants.
-      try {
-        await fetch(`${apiBaseUrl}/api/v1/organizations`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: finalOrgId,
-            name: finalOrgId,
-          }),
-        });
-      } catch {
-        // ignore if exists
+      // Pre-flight bootstrap: Check if organization exists
+      const orgAlreadyExists = availableOrgs.some((o) => o.id === finalOrgId);
+      if (!orgAlreadyExists) {
+        try {
+          await fetch(`${apiBaseUrl}/api/v1/organizations`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getAdminHeaders() },
+            body: JSON.stringify({
+              id: finalOrgId,
+              name: finalOrgId.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+            }),
+          });
+        } catch {
+          // ignore
+        }
       }
 
-      const derivedUserId = `usr_${finalOwner.replace(/[^a-z0-9]/gi, "_").toLowerCase().slice(0, 30)}`;
+      // Resolve user id
+      let resolvedUserId = "usr_admin";
       try {
-        await fetch(`${apiBaseUrl}/api/v1/users`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: derivedUserId,
-            email: finalOwner,
-            display_name: finalOwner.split("@")[0],
-          }),
+        const usersRes = await fetch(`${apiBaseUrl}/api/v1/users`, {
+          headers: { ...getAdminHeaders() },
         });
+        if (usersRes.ok) {
+          const usersList: { id: string; email: string }[] = await usersRes.json();
+          const matchUser = usersList.find((u) => u.email.toLowerCase() === finalOwner.toLowerCase());
+          if (matchUser) {
+            resolvedUserId = matchUser.id;
+          } else {
+            resolvedUserId = `usr_${finalOwner.replace(/[^a-z0-9]/gi, "_").toLowerCase().slice(0, 30)}`;
+            await fetch(`${apiBaseUrl}/api/v1/users`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...getAdminHeaders() },
+              body: JSON.stringify({
+                id: resolvedUserId,
+                email: finalOwner,
+                display_name: finalOwner.split("@")[0],
+              }),
+            });
+          }
+        }
       } catch {
-        // ignore if exists
+        // fallback
       }
 
+      // Ensure membership exists
       try {
         await fetch(`${apiBaseUrl}/api/v1/users/memberships`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...getAdminHeaders() },
           body: JSON.stringify({
-            id: `mem_${finalOrgId.slice(0, 20)}_${derivedUserId.slice(0, 20)}_${Date.now().toString().slice(-6)}`,
-            user_id: derivedUserId,
+            id: `mem_${finalOrgId.slice(0, 16)}_${resolvedUserId.slice(0, 16)}`,
+            user_id: resolvedUserId,
             organization_id: finalOrgId,
             role: "administrator",
           }),
         });
       } catch {
-        // ignore if exists
+        // ignore
       }
 
-      try {
-        await fetch(`${apiBaseUrl}/api/v1/projects`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: finalProjectId,
-            organization_id: finalOrgId,
-            name: finalProjectId,
-          }),
-        });
-      } catch {
-        // ignore if exists
+      // Check if project exists
+      const projAlreadyExists = availableProjects.some((p) => p.id === finalProjectId);
+      if (!projAlreadyExists) {
+        try {
+          await fetch(`${apiBaseUrl}/api/v1/projects`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getAdminHeaders() },
+            body: JSON.stringify({
+              id: finalProjectId,
+              organization_id: finalOrgId,
+              name: finalProjectId,
+            }),
+          });
+        } catch {
+          // ignore
+        }
       }
 
-      // 1. Submit to existing Agent Registration API
+      // 1. Submit to Agent Registration API with Framework & Provider Vault Key
       const registerRes = await fetch(`${apiBaseUrl}/api/v1/agents`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...getAdminHeaders(),
+          "X-Organization-Id": finalOrgId,
           "X-User-Email": finalOwner,
         },
         body: JSON.stringify({
@@ -275,6 +361,10 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
           name: finalName,
           environment: environment,
           purpose: purpose.trim() || undefined,
+          framework: framework,
+          llm_provider: llmProvider,
+          default_model: defaultModel,
+          provider_api_key: providerApiKey.trim() || undefined,
         }),
       });
 
@@ -282,14 +372,10 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
         let errText = "Failed to register agent identity.";
         try {
           const errJson = await registerRes.json();
-          if (errJson.detail) {
-            if (typeof errJson.detail === "string") {
-              errText = errJson.detail;
-            } else if (Array.isArray(errJson.detail)) {
-              errText = errJson.detail
-                .map((d: { loc?: (string | number)[]; msg?: string }) => `${d.loc ? d.loc.slice(1).join(".") + ": " : ""}${d.msg || ""}`)
-                .join(", ");
-            }
+          if (errJson.error && errJson.error.message) {
+            errText = errJson.error.message;
+          } else if (errJson.detail) {
+            errText = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
           }
         } catch {
           errText = `Registration failed with HTTP ${registerRes.status}: ${registerRes.statusText}`;
@@ -308,6 +394,7 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "X-Organization-Id": finalOrgId,
             "X-User-Email": finalOwner,
           },
         });
@@ -316,10 +403,10 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
           issuedCredential = await credRes.json();
         }
       } catch {
-        // credential generation could fail if already generated, still proceed
+        // proceed
       }
 
-      // Notify parent to immediately refresh and show newly registered agent
+      // Notify parent to refresh list
       onAgentRegistered(
         {
           agent_id: registeredAgent.id,
@@ -339,6 +426,8 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
         agent: registeredAgent,
         credential: issuedCredential,
       });
+      // Clear sensitive provider key from form state memory immediately
+      setProviderApiKey("");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "An unexpected network error occurred.";
       setErrorMessage(message);
@@ -349,6 +438,72 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
 
   if (!isOpen) return null;
 
+  const gatewayUrl = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}:8000` : "http://127.0.0.1:8000";
+  const proxyUrl = `${gatewayUrl}/api/v1/proxy/v1`;
+
+  const getSnippetContent = (tab: string) => {
+    const tokenDisplay = successData?.credential ? successData.credential.plaintext_secret : "<YOUR_AGENT_BEARER_TOKEN>";
+    const modelDisplay = successData?.agent.default_model || defaultModel || "gpt-4o-mini";
+
+    if (tab === "python") {
+      return `from openai import OpenAI
+
+# The external agent holds ONLY its governance bearer token (${tokenDisplay.slice(0, 8)}...)
+# The real provider API key resides securely inside the gateway vault!
+client = OpenAI(
+    base_url="${proxyUrl}",
+    api_key="${tokenDisplay}"
+)
+
+response = client.chat.completions.create(
+    model="${modelDisplay}",
+    messages=[
+        {"role": "user", "content": "Explain what an autonomous agent is."}
+    ]
+)
+print(response.choices[0].message.content)`;
+    }
+    if (tab === "langgraph") {
+      return `from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(
+    base_url="${proxyUrl}",
+    api_key="${tokenDisplay}",
+    model="${modelDisplay}",
+)
+response = llm.invoke("Summarize policy status.")
+print(response.content)`;
+    }
+    if (tab === "crewai") {
+      return `from crewai import Agent, Crew, Task
+from governance_sdk.client import GovernanceClient
+from governance_sdk.adapters.crewai import CrewAIGovernanceHook
+
+gov_client = GovernanceClient(
+    base_url="${proxyUrl}",
+    agent_token="${tokenDisplay}",
+)
+
+# Intercept and govern all CrewAI tool executions
+with CrewAIGovernanceHook(client=gov_client) as hook:
+    # Autonomous agent crew executions are deterministically mediated
+    crew.kickoff()`;
+    }
+    if (tab === "autogen") {
+      return `config_list = [
+    {
+        "model": "${modelDisplay}",
+        "base_url": "${proxyUrl}",
+        "api_key": "${tokenDisplay}",
+    }
+]`;
+    }
+    return `# In external/OpenHands/.env:
+OPENAI_BASE_URL=${proxyUrl}
+OPENAI_API_KEY=${tokenDisplay}
+LLM_MODEL=${modelDisplay}`;
+  };
+
   return (
     <div
       id="modal-add-agent-backdrop"
@@ -358,32 +513,32 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(13, 17, 23, 0.85)",
+        background: "rgba(10, 15, 25, 0.75)",
+        backdropFilter: "blur(4px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 1000,
+        zIndex: 9999,
         padding: "16px",
       }}
-      onClick={handleClose}
     >
       <div
-        id="modal-add-agent-content"
+        id="modal-add-agent-container"
         style={{
+          background: "#ffffff",
+          border: "1px solid #cbd5e1",
+          borderRadius: "8px",
           width: "100%",
-          maxWidth: "620px",
+          maxWidth: "680px",
           maxHeight: "90vh",
           overflowY: "auto",
-          background: "var(--panel-bg)",
-          border: "1px solid var(--border-rule)",
-          borderRadius: "4px",
-          padding: "20px 24px",
-          boxShadow: "0 12px 28px rgba(0,0,0,0.6)",
+          padding: "24px",
           display: "flex",
           flexDirection: "column",
-          gap: "16px",
+          gap: "18px",
+          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          color: "#0f172a",
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div
@@ -391,42 +546,48 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            borderBottom: "1px solid var(--border-rule)",
+            borderBottom: "1px solid #e2e8f0",
             paddingBottom: "12px",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div
               style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "3px",
-                background: "var(--surface-plate)",
-                border: "1px solid var(--border-rule)",
+                width: "36px",
+                height: "36px",
+                borderRadius: "8px",
+                background: "#f1f5f9",
+                border: "1px solid #cbd5e1",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "1rem",
+                fontSize: "1.2rem",
               }}
             >
               🤖
             </div>
             <div>
-              <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                {successData ? "Agent Identity Provisioned" : "Register Autonomous Agent"}
+              <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
+                {successData ? "External Agent Integrated" : "Register External AI Agent"}
               </h2>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", maxWidth: "55ch" }}>
+              <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
                 {successData
-                  ? "Identity verified with secure cryptographic credentials"
-                  : "Onboard a new autonomous identity into runtime security mediation"}
+                  ? "Identity verified & provider credentials vaulted securely"
+                  : "Connect OpenHands, LangGraph, CrewAI, AutoGen, or custom Python agents"}
               </div>
             </div>
           </div>
           <button
             id="btn-close-modal"
-            className="btn btn-ghost"
             onClick={handleClose}
-            style={{ fontSize: "0.85rem", padding: "4px 8px" }}
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: "1.1rem",
+              cursor: "pointer",
+              color: "#64748b",
+              padding: "4px 8px",
+            }}
             aria-label="Close"
           >
             ✕
@@ -439,451 +600,485 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
             id="add-agent-error-alert"
             style={{
               padding: "10px 14px",
-              borderRadius: "3px",
-              background: "var(--status-block-bg)",
-              border: "1px solid var(--status-block-border)",
-              color: "#FFA198",
+              borderRadius: "6px",
+              background: "#fef2f2",
+              border: "1px solid #f87171",
+              color: "#991b1b",
               fontSize: "0.8125rem",
               display: "flex",
               alignItems: "flex-start",
               gap: "8px",
             }}
           >
-            <span style={{ fontSize: "0.9rem" }}>■</span>
+            <span>⚠️</span>
             <div style={{ flex: 1, lineHeight: "1.4" }}>{errorMessage}</div>
           </div>
         )}
 
-        {/* View 1: Secure Credential Display (Success State) */}
+        {/* VIEW 1: SUCCESS & INTEGRATION INSTRUCTIONS */}
         {successData ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {/* Success summary pill */}
             <div
               style={{
                 padding: "12px 14px",
-                background: "var(--status-allow-bg)",
-                border: "1px solid var(--status-allow-border)",
-                borderRadius: "3px",
+                background: "#f0fdf4",
+                border: "1px solid #86efac",
+                borderRadius: "6px",
                 display: "flex",
                 alignItems: "center",
                 gap: "10px",
               }}
             >
-              <span style={{ fontSize: "1.1rem" }}>✅</span>
+              <span style={{ fontSize: "1.2rem" }}>✅</span>
               <div>
-                <div style={{ fontWeight: 600, color: "var(--status-allow-fg)", fontSize: "0.875rem" }}>
-                  Agent Identity Successfully Registered
+                <div style={{ fontWeight: 700, color: "#166534", fontSize: "0.875rem" }}>
+                  External Agent Successfully Registered & Vaulted
                 </div>
-                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
-                  <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>{successData.agent.name}</span> (
-                  <code className="code-pill">{successData.agent.id}</code>) is now actively monitored.
+                <div style={{ fontSize: "0.75rem", color: "#374151", marginTop: "2px" }}>
+                  <span style={{ fontWeight: 600 }}>{successData.agent.name}</span> (
+                  <code style={{ background: "#e2e8f0", padding: "1px 5px", borderRadius: "3px", fontFamily: "var(--font-mono)" }}>
+                    {successData.agent.id}
+                  </code>
+                  ) is governed under {successData.agent.organization_id}.
                 </div>
               </div>
             </div>
 
-            {/* Agent Metadata Card */}
+            {/* Endpoints & Vault Status */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-                gap: "8px",
-                background: "var(--surface-plate)",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
                 padding: "12px",
-                borderRadius: "3px",
-                border: "1px solid var(--border-rule)",
               }}
             >
               <div>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>TENANT</div>
-                <div style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 500, fontFamily: "var(--font-mono)" }}>
-                  {successData.agent.organization_id}
-                </div>
+                <div style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>LLM GOVERNANCE PROXY URL</div>
+                <code style={{ fontSize: "0.75rem", color: "#0f172a", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
+                  {proxyUrl}
+                </code>
               </div>
               <div>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>PROJECT</div>
-                <div style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 500, fontFamily: "var(--font-mono)" }}>
-                  {successData.agent.project_id}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>ENVIRONMENT</div>
-                <div style={{ fontSize: "0.8125rem", color: "#79C0FF", fontWeight: 600, textTransform: "uppercase" }}>
-                  {successData.agent.environment}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>OWNER</div>
-                <div style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 500 }}>
-                  {successData.agent.owner}
+                <div style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>PROVIDER VAULT STATUS</div>
+                <div style={{ fontSize: "0.75rem", color: "#15803d", fontWeight: 600 }}>
+                  {successData.agent.provider_key_configured ? "🔒 AES-256-GCM Encrypted in Vault" : "ℹ️ No Upstream Key Vaulted"}
                 </div>
               </div>
             </div>
 
-            {/* Generated Credential Section */}
-            {successData.credential ? (
+            {/* Generated Runtime Secret */}
+            {successData.credential && (
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "10px",
-                  background: "var(--surface-plate)",
-                  border: "1px solid var(--border-rule)",
-                  borderRadius: "3px",
+                  gap: "8px",
+                  background: "#0f172a",
+                  border: "1px solid #334155",
+                  borderRadius: "6px",
                   padding: "14px",
+                  color: "#ffffff",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ fontSize: "0.95rem" }}>🔑</span>
-                    <span style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: "0.8125rem" }}>
-                      Cryptographic Runtime Secret
-                    </span>
+                    <span>🔑</span>
+                    <span style={{ fontWeight: 600, fontSize: "0.8125rem" }}>Agent Runtime Bearer Token</span>
                   </div>
-                  <span className="code-pill" style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                  <span style={{ fontSize: "0.7rem", color: "#94a3b8", fontFamily: "var(--font-mono)" }}>
                     {successData.credential.id}
                   </span>
                 </div>
 
-                {/* Secret Display Box */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    background: "#090D13",
-                    border: "1px solid var(--border-rule)",
-                    borderRadius: "3px",
-                    padding: "6px 10px",
-                  }}
-                >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <input
-                    id="input-agent-credential-secret"
                     type={showSecret ? "text" : "password"}
                     readOnly
                     value={successData.credential.plaintext_secret}
                     style={{
                       flex: 1,
-                      background: "transparent",
-                      border: "none",
-                      color: "#FFFFFF",
+                      background: "#1e293b",
+                      border: "1px solid #475569",
+                      borderRadius: "4px",
+                      padding: "6px 10px",
+                      color: "#38bdf8",
                       fontFamily: "var(--font-mono)",
                       fontSize: "0.8125rem",
-                      letterSpacing: showSecret ? "normal" : "0.12em",
                       outline: "none",
                     }}
                   />
                   <button
                     type="button"
-                    className="btn btn-ghost"
                     onClick={() => setShowSecret(!showSecret)}
-                    style={{ padding: "3px 8px", fontSize: "0.72rem" }}
-                    title={showSecret ? "Hide Secret" : "Show Secret"}
+                    style={{
+                      background: "#334155",
+                      border: "none",
+                      color: "#ffffff",
+                      padding: "6px 10px",
+                      borderRadius: "4px",
+                      fontSize: "0.75rem",
+                      cursor: "pointer",
+                    }}
                   >
                     {showSecret ? "Hide" : "Show"}
                   </button>
                   <button
-                    id="btn-copy-secret"
                     type="button"
-                    className="btn btn-primary"
                     onClick={() => copyToClipboard(successData.credential!.plaintext_secret)}
-                    style={{ padding: "4px 10px", fontSize: "0.72rem" }}
+                    style={{
+                      background: "#2563eb",
+                      border: "none",
+                      color: "#ffffff",
+                      padding: "6px 14px",
+                      borderRadius: "4px",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
                   >
-                    {copiedSecret ? "Copied" : "Copy"}
+                    {copiedSecret ? "Copied!" : "Copy"}
                   </button>
                 </div>
-
-                {/* Warning callout */}
-                <div
-                  id="credential-security-warning"
-                  style={{
-                    padding: "8px 10px",
-                    background: "var(--status-approval-bg)",
-                    border: "1px solid var(--status-approval-border)",
-                    borderRadius: "3px",
-                    fontSize: "0.75rem",
-                    color: "var(--status-approval-fg)",
-                    lineHeight: "1.4",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "6px",
-                  }}
-                >
-                  <span>■</span>
-                  <span>
-                    <strong>Save this secret immediately:</strong> This cryptographic credential is generated once and cannot be retrieved again. If lost, you must revoke this credential and generate a replacement.
-                  </span>
+                <div style={{ fontSize: "0.72rem", color: "#fbbf24" }}>
+                  ⚠️ Save this token now. It will never be displayed in plaintext again.
                 </div>
-              </div>
-            ) : (
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", padding: "8px" }}>
-                Identity registered. Issue credentials at any time from the agent details panel.
               </div>
             )}
 
-            {/* Modal Actions */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+            {/* Framework Integration Instructions */}
+            <div>
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
+                CONNECT YOUR AGENT FRAMEWORK
+              </div>
+              <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+                {[
+                  { id: "python", label: "OpenAI / Python SDK" },
+                  { id: "langgraph", label: "LangGraph" },
+                  { id: "crewai", label: "CrewAI" },
+                  { id: "autogen", label: "AutoGen" },
+                  { id: "openhands", label: "OpenHands" },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setActiveSnippetTab(t.id as any)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "4px",
+                      fontSize: "0.72rem",
+                      fontWeight: 600,
+                      border: "1px solid",
+                      borderColor: activeSnippetTab === t.id ? "#2563eb" : "#cbd5e1",
+                      background: activeSnippetTab === t.id ? "#eff6ff" : "#ffffff",
+                      color: activeSnippetTab === t.id ? "#1d4ed8" : "#475569",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ position: "relative" }}>
+                <pre
+                  style={{
+                    background: "#0f172a",
+                    color: "#f8fafc",
+                    padding: "12px",
+                    borderRadius: "6px",
+                    fontSize: "0.75rem",
+                    fontFamily: "var(--font-mono)",
+                    overflowX: "auto",
+                    whiteSpace: "pre-wrap",
+                    margin: 0,
+                  }}
+                >
+                  {getSnippetContent(activeSnippetTab)}
+                </pre>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(getSnippetContent(activeSnippetTab))}
+                  style={{
+                    position: "absolute",
+                    top: "8px",
+                    right: "8px",
+                    background: "#334155",
+                    border: "none",
+                    color: "#ffffff",
+                    fontSize: "0.7rem",
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Copy Snippet
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
               <button
-                id="btn-done-modal"
-                className="btn btn-primary"
+                type="button"
                 onClick={handleClose}
-                style={{ padding: "6px 20px", fontSize: "0.8125rem" }}
+                style={{
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  padding: "8px 20px",
+                  borderRadius: "6px",
+                  border: "none",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
               >
                 Done
               </button>
             </div>
           </div>
         ) : (
+          /* VIEW 2: REGISTRATION FORM */
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            {/* View 2: Registration Form */}
-            {/* Scope Row: Organization & Project */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-              {/* Organization / Tenant */}
+            {/* Tenant and Project row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <div>
-                <label
-                  htmlFor="agent-org-id"
-                  style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "6px", fontFamily: "var(--font-mono)" }}
-                >
-                  ORGANIZATION / TENANT *
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  TENANT / ORGANIZATION *
                 </label>
-                <input
-                  id="agent-org-id"
-                  type="text"
-                  required
+                <select
                   value={organizationId}
                   onChange={(e) => setOrganizationId(e.target.value)}
-                  placeholder="e.g. org_enterprise"
                   style={{
                     width: "100%",
-                    background: "#ffffff",
+                    padding: "7px 10px",
+                    borderRadius: "6px",
                     border: "1px solid #cbd5e1",
-                    borderRadius: "8px",
-                    padding: "8px 12px",
-                    color: "#0f172a",
-                    fontFamily: "var(--font-mono)",
                     fontSize: "0.8125rem",
-                    outline: "none",
-                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                   }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
+                >
+                  {availableOrgs.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name} ({o.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  PROJECT SCOPE *
+                </label>
+                <select
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.8125rem",
+                  }}
+                >
+                  {availableProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Agent Name and Machine ID */}
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "12px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  Agent Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="e.g. Production Support Agent"
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.8125rem",
+                  }}
                 />
               </div>
-
-              {/* Project */}
               <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                  <label
-                    htmlFor={isCustomProject ? "agent-custom-project-id" : "agent-project-id"}
-                    style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155", fontFamily: "var(--font-mono)" }}
-                  >
-                    PROJECT SCOPE *
-                  </label>
-                  {availableProjects.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomProject(!isCustomProject)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--accent-primary, #2563eb)",
-                        fontSize: "0.7rem",
-                        cursor: "pointer",
-                        textDecoration: "underline",
-                      }}
-                    >
-                      {isCustomProject ? "Select existing" : "+ New project ID"}
-                    </button>
-                  )}
-                </div>
-
-                {isCustomProject || availableProjects.length === 0 ? (
-                  <input
-                    id="agent-custom-project-id"
-                    type="text"
-                    required
-                    value={customProjectId}
-                    onChange={(e) => setCustomProjectId(e.target.value)}
-                    placeholder="e.g. proj_operations"
-                    style={{
-                      width: "100%",
-                      background: "#ffffff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "8px",
-                      padding: "8px 12px",
-                      color: "#0f172a",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "0.8125rem",
-                      outline: "none",
-                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-                  />
-                ) : (
-                  <select
-                    id="agent-project-id"
-                    value={projectId}
-                    onChange={(e) => setProjectId(e.target.value)}
-                    disabled={loadingProjects}
-                    style={{
-                      width: "100%",
-                      background: "#ffffff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "8px",
-                      padding: "8px 12px",
-                      color: "#0f172a",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "0.8125rem",
-                      outline: "none",
-                      cursor: "pointer",
-                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-                  >
-                    {availableProjects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.id})
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  Agent Identifier *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={agentId}
+                  onChange={(e) => {
+                    setAgentIdTouched(true);
+                    setAgentId(e.target.value.toLowerCase());
+                  }}
+                  placeholder="e.g. prod-support-agent"
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.8125rem",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                />
               </div>
             </div>
 
-            {/* Agent Name */}
-            <div>
-              <label
-                htmlFor="agent-name-input"
-                style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}
-              >
-                Agent Name *
-              </label>
-              <input
-                id="agent-name-input"
-                type="text"
-                required
-                maxLength={128}
-                value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="e.g., Finance Reconciliation Agent"
-                style={{
-                  width: "100%",
-                  background: "#ffffff",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "8px",
-                  padding: "8px 12px",
-                  color: "#0f172a",
-                  fontSize: "0.8125rem",
-                  outline: "none",
-                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
-                onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-              />
+            {/* Framework & LLM Provider Row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  Agent Framework *
+                </label>
+                <select
+                  value={framework}
+                  onChange={(e) => setFramework(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.8125rem",
+                  }}
+                >
+                  <option value="custom">Custom Python Agent</option>
+                  <option value="openhands">OpenHands</option>
+                  <option value="langgraph">LangGraph</option>
+                  <option value="crewai">CrewAI</option>
+                  <option value="autogen">AutoGen</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  Upstream Provider *
+                </label>
+                <select
+                  value={llmProvider}
+                  onChange={(e) => setLlmProvider(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.8125rem",
+                  }}
+                >
+                  <option value="openai">OpenAI</option>
+                  <option value="gemini">Google Gemini</option>
+                  <option value="anthropic">Anthropic Claude</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  Default Model *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={defaultModel}
+                  onChange={(e) => setDefaultModel(e.target.value)}
+                  placeholder="e.g. gpt-4o-mini"
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.8125rem",
+                  }}
+                />
+              </div>
             </div>
 
-            {/* Agent Machine ID */}
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                <label
-                  htmlFor="agent-id-input"
-                  style={{ fontSize: "0.75rem", fontWeight: 600, color: "#334155", fontFamily: "var(--font-mono)" }}
-                >
-                  AGENT MACHINE IDENTIFIER *
+            {/* Provider API Key Vaulting Box */}
+            <div
+              style={{
+                background: "#f8fafc",
+                border: "1px solid #cbd5e1",
+                borderRadius: "6px",
+                padding: "12px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#0f172a" }}>
+                  🔒 UPSTREAM PROVIDER API KEY (VAULT ENCRYPTED)
                 </label>
-                <span style={{ fontSize: "0.6875rem", color: "#64748b" }}>
-                  Lowercase alphanumeric, hyphens
+                <span style={{ fontSize: "0.68rem", color: "#166534", fontWeight: 600, background: "#dcfce7", padding: "1px 6px", borderRadius: "3px" }}>
+                  AES-256-GCM
                 </span>
               </div>
               <input
-                id="agent-id-input"
-                type="text"
-                required
-                minLength={3}
-                maxLength={64}
-                value={agentId}
-                onChange={(e) => {
-                  setAgentIdTouched(true);
-                  setAgentId(e.target.value.toLowerCase());
-                }}
-                placeholder="e.g., finance-reconciliation-agent"
+                type="password"
+                value={providerApiKey}
+                onChange={(e) => setProviderApiKey(e.target.value)}
+                placeholder="sk-proj-... or AIzaSy... (Encrypted at rest on Gateway)"
                 style={{
                   width: "100%",
-                  background: "#ffffff",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "8px",
                   padding: "8px 12px",
-                  color: "#0f172a",
-                  fontFamily: "var(--font-mono)",
+                  borderRadius: "6px",
+                  border: "1px solid #94a3b8",
                   fontSize: "0.8125rem",
+                  fontFamily: "var(--font-mono)",
                   outline: "none",
-                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
-                onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
               />
+              <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
+                This key is encrypted before saving. Your external agent will connect with its agent bearer token (
+                <code>agt_...</code>) and will never possess this secret directly.
+              </div>
             </div>
 
-            {/* Owner Email & Environment Row */}
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "14px" }}>
-              {/* Owner */}
+            {/* Owner Email & Environment */}
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "12px" }}>
               <div>
-                <label
-                  htmlFor="agent-owner-input"
-                  style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}
-                >
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
                   Owner (Security Officer) *
                 </label>
                 <input
-                  id="agent-owner-input"
                   type="email"
                   required
                   value={owner}
                   onChange={(e) => setOwner(e.target.value)}
-                  placeholder="e.g. security_admin@enterprise.internal"
                   style={{
                     width: "100%",
-                    background: "#ffffff",
+                    padding: "7px 10px",
+                    borderRadius: "6px",
                     border: "1px solid #cbd5e1",
-                    borderRadius: "8px",
-                    padding: "8px 12px",
-                    color: "#0f172a",
                     fontSize: "0.8125rem",
-                    outline: "none",
-                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                   }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
                 />
               </div>
 
-              {/* Environment */}
               <div>
-                <label
-                  htmlFor="agent-environment-select"
-                  style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}
-                >
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
                   Environment *
                 </label>
                 <select
-                  id="agent-environment-select"
                   value={environment}
                   onChange={(e) => setEnvironment(e.target.value)}
                   style={{
                     width: "100%",
-                    background: "#ffffff",
+                    padding: "7px 10px",
+                    borderRadius: "6px",
                     border: "1px solid #cbd5e1",
-                    borderRadius: "8px",
-                    padding: "8px 12px",
-                    color: "#0f172a",
                     fontSize: "0.8125rem",
-                    outline: "none",
-                    cursor: "pointer",
-                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                   }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
                 >
                   <option value="development">Development (dev)</option>
                   <option value="staging">Staging (staging)</option>
@@ -894,85 +1089,68 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
 
             {/* Purpose */}
             <div>
-              <label
-                htmlFor="agent-purpose-input"
-                style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}
-              >
-                Capability & Scope Mandate
+              <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                Operational Mandate & Allowed Scope
               </label>
               <textarea
-                id="agent-purpose-input"
-                rows={3}
+                rows={2}
                 maxLength={512}
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
-                placeholder="Describe operational mandate and allowed tools..."
+                placeholder="Describe the agent's function, tools, and intended security boundary..."
                 style={{
                   width: "100%",
-                  background: "#ffffff",
+                  padding: "7px 10px",
+                  borderRadius: "6px",
                   border: "1px solid #cbd5e1",
-                  borderRadius: "8px",
-                  padding: "8px 12px",
-                  color: "#0f172a",
                   fontSize: "0.8125rem",
                   resize: "vertical",
-                  outline: "none",
-                  fontFamily: "var(--font-family)",
-                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
-                onBlur={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
               />
             </div>
 
-            {/* Form Action Buttons */}
+            {/* Submit and Cancel Buttons */}
             <div
               style={{
                 display: "flex",
                 justifyContent: "flex-end",
-                alignItems: "center",
                 gap: "10px",
                 borderTop: "1px solid #e2e8f0",
-                paddingTop: "14px",
-                marginTop: "6px",
+                paddingTop: "12px",
               }}
             >
               <button
                 type="button"
-                className="btn btn-ghost"
                 onClick={handleClose}
                 disabled={isSubmitting}
                 style={{
-                  fontSize: "0.8125rem",
                   padding: "8px 16px",
-                  borderRadius: "8px",
-                  border: "1px solid #e2e8f0",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
                   background: "#f8fafc",
                   color: "#334155",
                   fontWeight: 600,
+                  fontSize: "0.8125rem",
                   cursor: "pointer",
                 }}
               >
                 Cancel
               </button>
               <button
-                id="btn-submit-add-agent"
                 type="submit"
-                className="btn btn-primary"
                 disabled={isSubmitting}
                 style={{
-                  fontSize: "0.8125rem",
-                  padding: "8px 18px",
-                  borderRadius: "8px",
+                  padding: "8px 20px",
+                  borderRadius: "6px",
+                  border: "none",
                   background: "#2563eb",
                   color: "#ffffff",
                   fontWeight: 600,
-                  border: "none",
+                  fontSize: "0.8125rem",
                   cursor: "pointer",
-                  boxShadow: "0 1px 3px rgba(37, 99, 235, 0.3)",
                 }}
               >
-                {isSubmitting ? "Registering Agent..." : "+ Register & Issue Credentials"}
+                {isSubmitting ? "Registering & Encrypting Vault..." : "+ Register & Issue Credentials"}
               </button>
             </div>
           </form>

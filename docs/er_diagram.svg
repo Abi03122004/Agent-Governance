@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 780" width="100%" height="100%" style="background:#ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <style>
+      .table-header { fill: #20335e; }
+      .header-text { fill: #ffffff; font-weight: bold; font-size: 15px; }
+      .table-body { fill: #ffffff; stroke: #20335e; stroke-width: 1.5px; }
+      .pk-fk { fill: #b93822; font-size: 12.5px; font-weight: 500; }
+      .field { fill: #333333; font-size: 12.5px; }
+      .line { stroke: #20335e; stroke-width: 1.5px; fill: none; }
+      .cardinality { fill: #111111; font-size: 12px; font-weight: 600; background: #fff; }
+    </style>
+  </defs>
+
+  <!-- ================= RELATIONAL CONNECTING LINES ================= -->
+  <!-- organizations to projects (1:N) -->
+  <path d="M 120 70 L 120 40 L 980 40 L 980 70" class="line" />
+  <text x="530" y="32" class="cardinality" text-anchor="middle">1 : N projects</text>
+
+  <!-- organizations to agents (1:N owns) -->
+  <path d="M 230 145 L 450 145" class="line" />
+  <text x="340" y="137" class="cardinality" text-anchor="middle">1 : N owns</text>
+
+  <!-- organizations to runtime_actions (1:N) -->
+  <path d="M 230 185 L 340 185 L 340 450 L 450 450" class="line" />
+  <text x="355" y="320" class="cardinality">1 : N</text>
+
+  <!-- organizations to audit_events (1:N) -->
+  <path d="M 130 230 L 130 520" class="line" />
+  <text x="140" y="380" class="cardinality">1 : N</text>
+
+  <!-- agents to policies (1:1 / 1:N) -->
+  <path d="M 640 170 L 750 170 L 750 330 L 840 330" class="line" />
+  <text x="760" y="250" class="cardinality">1 : 1</text>
+
+  <!-- agents to runtime_actions (1:N) -->
+  <path d="M 545 270 L 545 400" class="line" />
+  <text x="555" y="340" class="cardinality">1 : N</text>
+
+  <!-- agents to approval_requests (1:N) -->
+  <path d="M 640 230 L 680 230 L 680 640 L 640 640" class="line" />
+  <text x="690" y="440" class="cardinality">1 : N</text>
+
+  <!-- policies to policy_rules (1:N) -->
+  <path d="M 940 450 L 940 530" class="line" />
+  <text x="950" y="495" class="cardinality">1 : N</text>
+
+  <!-- policy_rules to execution_authorizations (1:N) -->
+  <path d="M 940 650 L 940 670" class="line" />
+  <text x="950" y="665" class="cardinality">1 : N</text>
+
+
+  <!-- ================= 1. ORGANIZATIONS (Top-Left) ================= -->
+  <g transform="translate(30, 70)">
+    <rect width="200" height="160" rx="3" class="table-body"/>
+    <path d="M 0 3 Q 0 0 3 0 L 197 0 Q 200 0 200 3 L 200 32 L 0 32 Z" class="table-header"/>
+    <text x="12" y="22" class="header-text">organizations</text>
+    <text x="12" y="52" class="pk-fk">id (PK)</text>
+    <line x1="0" y1="60" x2="200" y2="60" stroke="#eeeeee" stroke-width="1"/>
+    <text x="12" y="78" class="field">name</text>
+    <text x="12" y="100" class="field">status</text>
+    <text x="12" y="122" class="field">created_at</text>
+    <text x="12" y="144" class="field">updated_at</text>
+  </g>
+
+  <!-- ================= 2. PROJECTS (Top-Right) ================= -->
+  <g transform="translate(860, 50)">
+    <rect width="200" height="120" rx="3" class="table-body"/>
+    <path d="M 0 3 Q 0 0 3 0 L 197 0 Q 200 0 200 3 L 200 32 L 0 32 Z" class="table-header"/>
+    <text x="12" y="22" class="header-text">projects</text>
+    <text x="12" y="52" class="pk-fk">id (PK), organization_id (FK)</text>
+    <line x1="0" y1="60" x2="200" y2="60" stroke="#eeeeee" stroke-width="1"/>
+    <text x="12" y="78" class="field">name</text>
+    <text x="12" y="100" class="field">environment / status</text>
+  </g>
+
+  <!-- ================= 3. AGENTS (Top-Center) ================= -->
+  <g transform="translate(450, 70)">
+    <rect width="190" height="200" rx="3" class="table-body"/>
+    <path d="M 0 3 Q 0 0 3 0 L 187 0 Q 190 0 190 3 L 190 32 L 0 32 Z" class="table-header"/>
+    <text x="12" y="22" class="header-text">agents</text>
+    <text x="12" y="52" class="pk-fk">id (PK)</text>
+    <text x="12" y="72" class="pk-fk">organization_id (FK)</text>
+    <text x="12" y="92" class="pk-fk">project_id (FK)</text>
+    <line x1="0" y1="100" x2="190" y2="100" stroke="#eeeeee" stroke-width="1"/>
+    <text x="12" y="118" class="field">name / owner</text>
+    <text x="12" y="138" class="field">environment</text>
+    <text x="12" y="158" class="field">purpose</text>
+    <text x="12" y="178" class="field">status (active/suspended)</text>
+  </g>
+
+  <!-- ================= 4. POLICIES (Middle-Right) ================= -->
+  <g transform="translate(840, 270)">
+    <rect width="200" height="180" rx="3" class="table-body"/>
+    <path d="M 0 3 Q 0 0 3 0 L 197 0 Q 200 0 200 3 L 200 32 L 0 32 Z" class="table-header"/>
+    <text x="12" y="22" class="header-text">policies</text>
+    <text x="12" y="52" class="pk-fk">id (PK)</text>
+    <text x="12" y="72" class="pk-fk">organization_id (FK)</text>
+    <line x1="0" y1="80" x2="200" y2="80" stroke="#eeeeee" stroke-width="1"/>
+    <text x="12" y="98" class="field">name</text>
+    <text x="12" y="118" class="field">version / is_active</text>
+    <text x="12" y="138" class="field">rules_count</text>
+    <text x="12" y="158" class="field">created_at</text>
+  </g>
+
+  <!-- ================= 5. RUNTIME_ACTIONS (Center) ================= -->
+  <g transform="translate(450, 400)">
+    <rect width="190" height="175" rx="3" class="table-body"/>
+    <path d="M 0 3 Q 0 0 3 0 L 187 0 Q 190 0 190 3 L 190 32 L 0 32 Z" class="table-header"/>
+    <text x="12" y="22" class="header-text">runtime_actions</text>
+    <text x="12" y="52" class="pk-fk">id (PK)</text>
+    <text x="12" y="72" class="pk-fk">organization_id (FK)</text>
+    <text x="12" y="92" class="pk-fk">agent_id (FK)</text>
+    <line x1="0" y1="100" x2="190" y2="100" stroke="#eeeeee" stroke-width="1"/>
+    <text x="12" y="118" class="field">tool / operation</text>
+    <text x="12" y="138" class="field">action_digest (SHA-256)</text>
+    <text x="12" y="158" class="field">decision / reason_code</text>
+  </g>
+
+  <!-- ================= 6. AUDIT_EVENTS (Bottom-Left) ================= -->
+  <g transform="translate(30, 520)">
+    <rect width="200" height="180" rx="3" class="table-body"/>
+    <path d="M 0 3 Q 0 0 3 0 L 197 0 Q 200 0 200 3 L 200 32 L 0 32 Z" class="table-header"/>
+    <text x="12" y="22" class="header-text">audit_events</text>
+    <text x="12" y="52" class="pk-fk">event_id (PK)</text>
+    <text x="12" y="72" class="pk-fk">organization_id, agent_id (FK)</text>
+    <line x1="0" y1="80" x2="200" y2="80" stroke="#eeeeee" stroke-width="1"/>
+    <text x="12" y="98" class="field">tool_name / event_type</text>
+    <text x="12" y="118" class="field">canonical_action_hash</text>
+    <text x="12" y="138" class="field">policy_decision</text>
+    <text x="12" y="158" class="field">event_hash / timestamp</text>
+  </g>
+
+  <!-- ================= 7. APPROVAL_REQUESTS (Bottom-Center) ================= -->
+  <g transform="translate(450, 610)">
+    <rect width="190" height="120" rx="3" class="table-body"/>
+    <path d="M 0 3 Q 0 0 3 0 L 187 0 Q 190 0 190 3 L 190 32 L 0 32 Z" class="table-header"/>
+    <text x="12" y="22" class="header-text">approval_requests</text>
+    <text x="12" y="52" class="pk-fk">ticket_id (PK)</text>
+    <text x="12" y="72" class="pk-fk">organization_id, action_id (FK)</text>
+    <line x1="0" y1="80" x2="190" y2="80" stroke="#eeeeee" stroke-width="1"/>
+    <text x="12" y="98" class="field">status / reason / approver</text>
+  </g>
+
+  <!-- ================= 8. POLICY_RULES (Lower Middle-Right) ================= -->
+  <g transform="translate(840, 520)">
+    <rect width="200" height="120" rx="3" class="table-body"/>
+    <path d="M 0 3 Q 0 0 3 0 L 197 0 Q 200 0 200 3 L 200 32 L 0 32 Z" class="table-header"/>
+    <text x="12" y="22" class="header-text">policy_rules</text>
+    <text x="12" y="52" class="pk-fk">id (PK), policy_id (FK)</text>
+    <line x1="0" y1="60" x2="200" y2="60" stroke="#eeeeee" stroke-width="1"/>
+    <text x="12" y="78" class="field">decision / target_tool</text>
+    <text x="12" y="98" class="field">condition_expr / priority</text>
+  </g>
+
+  <!-- ================= 9. EXECUTION_AUTHORIZATIONS (Bottom-Right) ================= -->
+  <g transform="translate(840, 670)">
+    <rect width="200" height="95" rx="3" class="table-body"/>
+    <path d="M 0 3 Q 0 0 3 0 L 197 0 Q 200 0 200 3 L 200 32 L 0 32 Z" class="table-header"/>
+    <text x="12" y="22" class="header-text">execution_authorizations</text>
+    <text x="12" y="52" class="pk-fk">id (PK), action_id (FK)</text>
+    <line x1="0" y1="60" x2="200" y2="60" stroke="#eeeeee" stroke-width="1"/>
+    <text x="12" y="78" class="field">token_hash / expires_at / used_at</text>
+  </g>
+</svg>

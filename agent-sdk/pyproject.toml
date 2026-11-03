@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-governance-sdk"
+version = "0.1.0"
+description = "Autonomous AI Agent Security and Runtime Governance Python SDK"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+dependencies = [
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+langgraph = [
+    "langgraph>=0.0.1",
+    "langchain-core>=0.1.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "anyio>=4.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["governance_sdk*"]
+

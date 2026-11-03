@@ -44,7 +44,7 @@ services:
       DEBUG: "true"
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/agent_governance
       REDIS_URL: redis://redis:6379/0
-      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://[::1]:3000,http://localhost:8000,http://127.0.0.1:8000,http://[::1]:8000
       ALLOW_DEV_HEADER_AUTH: "true"
     volumes:
       - ./backend/src:/app/src

@@ -55,7 +55,14 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field(default="INFO")
     SERVICE_NAME: str = Field(default="agent-governance-platform")
     CORS_ORIGINS: Union[List[str], str] = Field(
-        default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://[::1]:3000",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+            "http://[::1]:8000",
+        ]
     )
 
     ALLOW_DEV_HEADER_AUTH: bool = Field(

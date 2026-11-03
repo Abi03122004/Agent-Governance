@@ -1,7 +1,7 @@
 """User and Membership ORM Models."""
 
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, ForeignKey, String
+from sqlalchemy import Column, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from agent_security.db.base import Base
@@ -22,6 +22,9 @@ class UserModel(Base):
 
 class MembershipModel(Base):
     __tablename__ = "memberships"
+    __table_args__ = (
+        UniqueConstraint("user_id", "organization_id", name="uq_user_organization_membership"),
+    )
 
     id = Column(String(64), primary_key=True)
     user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)

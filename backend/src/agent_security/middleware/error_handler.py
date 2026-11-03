@@ -55,6 +55,11 @@ def register_error_handlers(app: FastAPI) -> None:
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         req_id = getattr(request.state, "request_id", request_id_ctx.get())
         trc_id = getattr(request.state, "trace_id", trace_id_ctx.get())
+        if isinstance(exc.detail, dict) and "error" in exc.detail:
+            content = exc.detail
+            if isinstance(content.get("error"), dict):
+                content["error"].setdefault("request_id", req_id)
+            return JSONResponse(status_code=exc.status_code, content=content)
         return JSONResponse(
             status_code=exc.status_code,
             content=build_error_envelope(

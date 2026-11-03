@@ -15,6 +15,11 @@ class RuntimeActionInput(BaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
     destination: str | None = Field(default=None, max_length=512)
     purpose: str | None = Field(default=None, max_length=512)
+    action_description: str | None = Field(default=None, max_length=1024)
+    execution_context: dict[str, Any] = Field(default_factory=dict)
+    request_id: str | None = Field(default=None, max_length=128)
+    agent_id: str | None = Field(default=None, max_length=64)
+    organization_id: str | None = Field(default=None, max_length=64)
 
 
 class RuntimeDecision(BaseModel):
@@ -30,6 +35,7 @@ class RuntimeDecision(BaseModel):
     execution_authorization: str | None = None
     execution_authorization_expires_at: datetime | None = None
     approval_ticket_id: str | None = None
+    request_id: str | None = None
 
 
 class ExecuteActionRequest(BaseModel):

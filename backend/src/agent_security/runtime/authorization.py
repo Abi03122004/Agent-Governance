@@ -74,3 +74,15 @@ def verify_execution_token(
         )
     except Exception:
         return False
+
+
+def canonical_result_hash(status: str, output: object) -> str:
+    """Hash a terminal runtime result for safe duplicate-submission handling."""
+    payload = json.dumps(
+        {"status": status.lower(), "output": output},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        default=str,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()

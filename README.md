@@ -219,3 +219,33 @@ python agents/research_agent.py
 - [docs/security-model.md](docs/security-model.md): Security boundary invariants, tenant isolation, and zero-execution proof.
 - [docs/runtime-flow.md](docs/runtime-flow.md): Sequence diagrams and step-by-step action mediation lifecycle.
 - [docs/api.md](docs/api.md): Complete REST & WebSocket API specification and Swagger taxonomy.
+
+
+---
+
+## 9. OpenHands Agent Runtime Governance Integration
+
+OpenHands agent actions are mediated **before** execution and audited **after** execution via the Governance Gateway.
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GOVERNANCE_GATEWAY_URL` | No | `http://127.0.0.1:8000` | Gateway base URL |
+| `GOVERNANCE_API_KEY` | Yes (for production) | Auto-provisioned in demo | Agent Bearer API credential |
+| `GOVERNANCE_POLL_INTERVAL` | No | `2.0` | Seconds between approval polling requests |
+| `GOVERNANCE_POLL_TIMEOUT` | No | `60.0` | Max seconds to wait for human approval |
+
+### Running the End-to-End Demo
+
+The demo runs 4 sequential OpenHands actions through the live gateway (`ALLOW`, `BLOCK`, `REQUIRE_APPROVAL` + 4-eyes independent approval, and `SUSPEND`), concluding with cryptographic audit hash chain verification:
+
+```bash
+python scripts/demo_openhands_governance.py
+```
+
+### Running Unit & Security Tests
+
+```bash
+pytest backend/tests/security/test_runtime_approval_polling.py backend/tests/unit/test_openhands_governance.py -v
+```

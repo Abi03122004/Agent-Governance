@@ -77,6 +77,27 @@ async def assign_role(membership: MembershipCreate, db: AsyncSession = Depends(g
     o_res = await db.execute(select(OrganizationModel).where(OrganizationModel.id == membership.organization_id))
     if not o_res.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Idempotency check: if user already has membership in this organization, update role if needed and return
+    existing_mem_res = await db.execute(
+        select(MembershipModel).where(
+            MembershipModel.user_id == membership.user_id,
+            MembershipModel.organization_id == membership.organization_id,
+        ).limit(1)
+    )
+    existing_mem = existing_mem_res.scalars().first()
+    if existing_mem:
+        if existing_mem.role != membership.role:
+            existing_mem.role = membership.role
+            await db.commit()
+            await db.refresh(existing_mem)
+        return Membership(
+            id=existing_mem.id,
+            user_id=existing_mem.user_id,
+            organization_id=existing_mem.organization_id,
+            role=existing_mem.role,
+            created_at=existing_mem.created_at,
+        )
         
     m_res = await db.execute(select(MembershipModel).where(MembershipModel.id == membership.id))
     if m_res.scalar_one_or_none():

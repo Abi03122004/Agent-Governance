@@ -34,7 +34,7 @@ def app_and_client():
     reset_settings_for_testing(None)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_runtime_gateway_complete_flow_and_invariants(app_and_client):
     client = app_and_client
     await init_db()
@@ -93,7 +93,7 @@ async def test_runtime_gateway_complete_flow_and_invariants(app_and_client):
         # Assert on the protected tool directly: call count MUST be ZERO
         assert tool_spy.call_count == 0
 
-    # 4. CRITICAL TEST: Allowed Action invokes protected tool exactly ONCE
+    # 4. An allowed action must be claimed before its framework-owned tool runs.
     mock_tool = MagicMock(return_value={"result": "data retrieved", "rows": 1})
     with patch("agent_security.runtime.gateway.RuntimeGateway.execute_safe_echo", side_effect=mock_tool):
         allow_eval = client.post(
@@ -117,29 +117,50 @@ async def test_runtime_gateway_complete_flow_and_invariants(app_and_client):
         # Tool count before execute is 0
         assert mock_tool.call_count == 0
 
-        # Execute allowed action
+        # Claim allowed action. The gateway does not execute a synthetic tool.
         exec_res = client.post(
-            f"/api/v1/runtime/actions/{action_id}/execute",
+            f"/api/v1/runtime/actions/{action_id}/claim",
             json={"execution_authorization": exec_token},
             headers=auth_headers,
         )
         assert exec_res.status_code == 200
-        assert exec_res.json()["status"] == "EXECUTED"
+        assert exec_res.json()["status"] == "EXECUTION_CLAIMED"
 
-        # Protected tool invocation count MUST be exactly 1
-        assert mock_tool.call_count == 1
+        # The real runtime owns execution; gateway-side safe echo is never called.
+        assert mock_tool.call_count == 0
 
-        # 5. SINGLE-USE / REPLAY PREVENTION TEST: Reusing token fails (403), tool not called again
+        # 5. A second claim must be rejected before any local replay can happen.
         replay_res = client.post(
-            f"/api/v1/runtime/actions/{action_id}/execute",
+            f"/api/v1/runtime/actions/{action_id}/claim",
             json={"execution_authorization": exec_token},
             headers=auth_headers,
         )
-        # Idempotency returns executed status without re-invoking tool
-        assert replay_res.status_code == 200
-        assert replay_res.json().get("idempotent") is True
-        # Crucial check: tool count remains 1!
-        assert mock_tool.call_count == 1
+        assert replay_res.status_code == 409
+        assert mock_tool.call_count == 0
+
+        result_res = client.post(
+            f"/api/v1/runtime/actions/{action_id}/result",
+            json={
+                "execution_authorization": exec_token,
+                "status": "succeeded",
+                "output": {"result": "data retrieved", "rows": 1},
+            },
+            headers=auth_headers,
+        )
+        assert result_res.status_code == 200
+        assert result_res.json()["status"] == "SUCCEEDED"
+
+        duplicate_result = client.post(
+            f"/api/v1/runtime/actions/{action_id}/result",
+            json={
+                "execution_authorization": exec_token,
+                "status": "succeeded",
+                "output": {"result": "data retrieved", "rows": 1},
+            },
+            headers=auth_headers,
+        )
+        assert duplicate_result.status_code == 200
+        assert duplicate_result.json()["idempotent"] is True
 
     # 6. DIGEST DETERMINISM: Changed args change digest; key order does not
     eval_a = client.post(

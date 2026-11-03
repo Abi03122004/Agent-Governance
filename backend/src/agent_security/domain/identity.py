@@ -68,6 +68,15 @@ class AgentIdentity(BaseModel):
     owner: str = Field(default="system", min_length=1, max_length=128)
     environment: str = Field(default="development", min_length=1, max_length=64)
     purpose: Optional[str] = Field(None, max_length=512)
+    framework: Optional[str] = Field(default="custom", max_length=64)
+    llm_provider: Optional[str] = Field(default="openai", max_length=64)
+    default_model: Optional[str] = Field(default="gpt-4o-mini", max_length=128)
+    endpoint: Optional[str] = Field(default=None, max_length=512)
+    connection_status: Optional[str] = Field(default="registered", max_length=32)
+    last_seen_at: Optional[datetime] = None
+    governed_requests_count: Optional[int] = 0
+    provider_key_configured: Optional[bool] = False
+    key_fingerprint: Optional[str] = None
     status: str = Field(default="active", pattern=r"^(active|revoked|suspended)$")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

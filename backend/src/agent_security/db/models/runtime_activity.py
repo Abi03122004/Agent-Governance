@@ -30,6 +30,7 @@ class ApprovalRequestModel(Base):
     decided_at = Column(DateTime(timezone=True), nullable=True)
     approver_id = Column(String(64), nullable=True)
     reason = Column(Text, nullable=True)
+    execution_token = Column(Text, nullable=True)
 
 
 class ExecutionRecordModel(Base):
@@ -99,12 +100,20 @@ class RuntimeActionModel(Base):
 
 
 class ExecutionAuthorizationModel(Base):
-    """One-time server-side replay guard for an action-bound authorization."""
+    """Stateful replay guard for an action-bound runtime authorization."""
     __tablename__ = "execution_authorizations"
 
     id = Column(String(128), primary_key=True)
     action_id = Column(String(128), ForeignKey("runtime_actions.id", ondelete="CASCADE"), nullable=False, index=True)
     token_hash = Column(String(64), nullable=False, unique=True)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    # An authorization is claimed before a runtime-side effect and completed only
+    # when the runtime reports its terminal outcome.  ``used_at`` is retained for
+    # compatibility with pre-lifecycle records and LLM proxy authorizations.
+    state = Column(String(32), nullable=False, default="ISSUED", index=True)
+    claimed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    result_hash = Column(String(64), nullable=True)
+    last_error = Column(Text, nullable=True)
     used_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

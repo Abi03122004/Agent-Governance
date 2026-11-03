@@ -6,8 +6,10 @@ from agent_security.db.models.project import ProjectModel
 from agent_security.db.models.user import UserModel, MembershipModel
 from agent_security.db.models.agent import AgentModel
 from agent_security.db.models.credential import AgentCredentialModel
+from agent_security.db.models.provider_credential import AgentProviderCredentialModel
 from agent_security.db.models.session import AgentSessionModel
 from agent_security.db.models.policy import ToolModel, PolicyModel, PolicyRuleModel
+from agent_security.db.models.llm_pending_request import LLMPendingRequestModel
 from agent_security.db.models.runtime_activity import (
     ApprovalRequestModel,
     ExecutionRecordModel,
@@ -24,10 +26,12 @@ __all__ = [
     "MembershipModel",
     "AgentModel",
     "AgentCredentialModel",
+    "AgentProviderCredentialModel",
     "AgentSessionModel",
     "ToolModel",
     "PolicyModel",
     "PolicyRuleModel",
+    "LLMPendingRequestModel",
     "ApprovalRequestModel",
     "ExecutionRecordModel",
     "AuditEventModel",

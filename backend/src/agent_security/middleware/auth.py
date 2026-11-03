@@ -100,9 +100,9 @@ async def verify_user_org_membership(db: AsyncSession, user_id: str, organizatio
         select(MembershipModel).where(
             MembershipModel.user_id == user_id,
             MembershipModel.organization_id == organization_id,
-        )
+        ).limit(1)
     )
-    if not result.scalar_one_or_none():
+    if not result.scalars().first():
         raise HTTPException(
             status_code=403,
             detail="Forbidden: User is not authorized to access resources in this organization",
@@ -116,9 +116,9 @@ def require_org_role(allowed_roles: list[str]):
             select(MembershipModel).where(
                 MembershipModel.user_id == current_user.id,
                 MembershipModel.organization_id == organization_id
-            )
+            ).limit(1)
         )
-        membership = result.scalar_one_or_none()
+        membership = result.scalars().first()
         
         if not membership:
             raise HTTPException(status_code=403, detail="Not a member of this organization")

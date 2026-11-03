@@ -11,6 +11,7 @@ from agent_security.api.v1.runtime import router as runtime_router
 from agent_security.api.v1.monitoring import router as monitoring_router
 from agent_security.api.v1.approvals import router as approvals_router
 from agent_security.api.v1.audit import router as audit_router
+from agent_security.api.v1.proxy import router as proxy_router
 
 api_router = APIRouter()
 
@@ -29,6 +30,7 @@ v1_router.include_router(runtime_router)
 v1_router.include_router(approvals_router)
 v1_router.include_router(monitoring_router)
 v1_router.include_router(audit_router)
+v1_router.include_router(proxy_router)
 api_router.include_router(v1_router)
 
 # Direct mounts for backwards compatibility
@@ -41,3 +43,4 @@ api_router.include_router(runtime_router)
 api_router.include_router(approvals_router)
 api_router.include_router(monitoring_router)
 api_router.include_router(audit_router)
+api_router.include_router(proxy_router)

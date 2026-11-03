@@ -72,12 +72,13 @@ class AuditService:
         details: Optional[Dict[str, Any]] = None,
     ) -> AuditEventModel:
         """Record an immutable, hash-chained, sanitized audit event for a tenant."""
-        # 1. Fetch previous event hash for tenant
+        # 1. Fetch previous event hash for tenant (with row lock for linear hash-chain integrity)
         prev_stmt = (
             select(AuditEventModel.event_hash)
             .where(AuditEventModel.organization_id == organization_id)
             .order_by(AuditEventModel.timestamp.desc(), AuditEventModel.event_id.desc())
             .limit(1)
+            .with_for_update()
         )
         prev_result = await db.execute(prev_stmt)
         previous_event_hash = prev_result.scalar_one_or_none()

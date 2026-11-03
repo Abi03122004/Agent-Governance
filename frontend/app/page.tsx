@@ -32,6 +32,9 @@ interface MonitoredAgent {
   organization_id: string;
   project_id: string;
   environment: string;
+  framework?: string;
+  llm_provider?: string;
+  connection_status?: string;
   status: string;
   last_activity: string | null;
   action_count: number;
@@ -679,8 +682,10 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                     <thead>
                       <tr style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-rule)" }}>
                         <th style={{ padding: "8px 12px" }}>Agent</th>
+                        <th style={{ padding: "8px 12px" }}>Framework</th>
                         <th style={{ padding: "8px 12px" }}>Environment</th>
                         <th style={{ padding: "8px 12px" }}>Status</th>
+                        <th style={{ padding: "8px 12px" }}>Connection</th>
                         <th style={{ padding: "8px 12px" }}>Last Activity</th>
                         <th style={{ padding: "8px 12px" }}>Actions</th>
                         <th style={{ padding: "8px 12px", textAlign: "right" }}>Governance</th>
@@ -692,6 +697,35 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                           <td style={{ padding: "10px 12px" }}>
                             <div style={{ fontWeight: 500, color: "var(--text-primary)" }}>{ag.name}</div>
                             <span className="code-pill" style={{ fontSize: "0.6875rem" }}>{ag.agent_id}</span>
+                          </td>
+                          <td style={{ padding: "10px 12px" }}>
+                            <span
+                              style={{
+                                padding: "2px 7px",
+                                borderRadius: "3px",
+                                fontSize: "0.6875rem",
+                                fontWeight: 600,
+                                background: ag.framework?.toLowerCase() === "langgraph"
+                                  ? "rgba(16, 185, 129, 0.15)"
+                                  : ag.framework?.toLowerCase() === "openhands"
+                                  ? "rgba(59, 130, 246, 0.15)"
+                                  : ag.framework?.toLowerCase() === "crewai"
+                                  ? "rgba(245, 158, 11, 0.15)"
+                                  : "var(--surface-plate)",
+                                color: ag.framework?.toLowerCase() === "langgraph"
+                                  ? "#10b981"
+                                  : ag.framework?.toLowerCase() === "openhands"
+                                  ? "#3b82f6"
+                                  : ag.framework?.toLowerCase() === "crewai"
+                                  ? "#f59e0b"
+                                  : "var(--text-secondary)",
+                                border: "1px solid var(--border-rule)",
+                                textTransform: "uppercase",
+                                fontFamily: "var(--font-mono)",
+                              }}
+                            >
+                              {ag.framework || "custom"}
+                            </span>
                           </td>
                           <td style={{ padding: "10px 12px" }}>
                             <span
@@ -712,6 +746,28 @@ export default function Home({ initialTab = "overview" }: { initialTab?: string 
                           <td style={{ padding: "10px 12px" }}>
                             <span className={`badge ${ag.status === "active" ? "badge-allow" : "badge-block"}`}>
                               {ag.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 12px" }}>
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                fontSize: "0.75rem",
+                                fontFamily: "var(--font-mono)",
+                                color: ag.connection_status === "connected" ? "#10b981" : "var(--text-muted)",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: "6px",
+                                  height: "6px",
+                                  borderRadius: "50%",
+                                  background: ag.connection_status === "connected" ? "#10b981" : "#6b7280",
+                                }}
+                              />
+                              {ag.connection_status || "registered"}
                             </span>
                           </td>
                           <td style={{ padding: "10px 12px", color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>

@@ -14,6 +14,7 @@ from agent_security.db.models import (
     AgentModel,
     ApprovalRequestModel,
     ExecutionAuthorizationModel,
+    LLMPendingRequestModel,
     MembershipModel,
     OrganizationModel,
     ProjectModel,
@@ -69,9 +70,9 @@ async def list_approvals(
             select(MembershipModel).where(
                 MembershipModel.user_id == current_user.id,
                 MembershipModel.organization_id == organization_id,
-            )
+            ).limit(1)
         )
-        if not mem_res.scalar_one_or_none():
+        if not mem_res.scalars().first():
             raise HTTPException(
                 status_code=403,
                 detail="Forbidden: User is not authorized to access resources in this organization",
@@ -122,9 +123,9 @@ async def get_approval(
         select(MembershipModel).where(
             MembershipModel.user_id == current_user.id,
             MembershipModel.organization_id == ticket.organization_id,
-        )
+        ).limit(1)
     )
-    if not mem_res.scalar_one_or_none():
+    if not mem_res.scalars().first():
         raise HTTPException(
             status_code=403,
             detail="Forbidden: User is not authorized to view approvals for this organization",
@@ -171,96 +172,166 @@ async def approve_ticket(
         select(MembershipModel).where(
             MembershipModel.user_id == current_user.id,
             MembershipModel.organization_id == ticket.organization_id,
-        )
+        ).limit(1)
     )
-    membership = mem_res.scalar_one_or_none()
+    membership = mem_res.scalars().first()
     if not membership or membership.role not in {"administrator", "security_operator", "approver"}:
         raise HTTPException(status_code=403, detail="User not authorized to approve actions for this organization")
 
-    # Fetch associated runtime action
-    act_res = await db.execute(select(RuntimeActionModel).where(RuntimeActionModel.id == ticket.action_id))
-    action_record = act_res.scalar_one_or_none()
-    if not action_record:
-        raise HTTPException(status_code=404, detail="Bound action record not found")
+    # Handle LLM pending requests vs standard tool actions
+    if ticket.action_id.startswith("llm_req_"):
+        llm_res = await db.execute(select(LLMPendingRequestModel).where(LLMPendingRequestModel.id == ticket.action_id))
+        llm_record = llm_res.scalar_one_or_none()
+        if not llm_record:
+            raise HTTPException(status_code=404, detail="Bound LLM pending request record not found")
 
-    # Cryptographic binding check: action hash must match exactly
-    if action_record.action_digest != ticket.canonical_action_hash:
-        ticket.status = "REJECTED"
-        ticket.reason = "Security violation: Action arguments tampered since approval request"
-        await db.commit()
-        raise HTTPException(status_code=409, detail="Action digest mismatch: action has been tampered with")
+        if llm_record.request_digest != ticket.canonical_action_hash:
+            ticket.status = "REJECTED"
+            ticket.reason = "Security violation: LLM request payload tampered since approval request"
+            await db.commit()
+            raise HTTPException(status_code=409, detail="Action digest mismatch: LLM request has been tampered with")
 
-    # Fetch agent to verify requester/approver separation and suspension status
-    agent_res = await db.execute(select(AgentModel).where(AgentModel.id == action_record.agent_id))
-    agent = agent_res.scalar_one_or_none()
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+        agent_res = await db.execute(select(AgentModel).where(AgentModel.id == llm_record.agent_id))
+        agent = agent_res.scalar_one_or_none()
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
 
-    # Requester / Approver separation: agent owner cannot approve their own agent's action
-    if agent.owner == current_user.email:
-        raise HTTPException(status_code=403, detail="Requester and approver separation required: agent owner cannot approve")
+        if agent.owner == current_user.email:
+            raise HTTPException(status_code=403, detail="Requester and approver separation required: agent owner cannot approve")
 
-    # Check suspension status of agent, project, organization
-    if agent.status == "suspended":
-        raise HTTPException(status_code=403, detail="Agent is suspended; approval prohibited")
+        if agent.status == "suspended":
+            raise HTTPException(status_code=403, detail="Agent is suspended; approval prohibited")
 
-    org_res = await db.execute(select(OrganizationModel).where(OrganizationModel.id == agent.organization_id))
-    org = org_res.scalar_one_or_none()
-    if org and org.status == "suspended":
-        raise HTTPException(status_code=403, detail="Organization is suspended; approval prohibited")
+        org = (await db.execute(select(OrganizationModel).where(OrganizationModel.id == agent.organization_id))).scalar_one_or_none()
+        if org and org.status == "suspended":
+            raise HTTPException(status_code=403, detail="Organization is suspended; approval prohibited")
 
-    proj_res = await db.execute(select(ProjectModel).where(ProjectModel.id == agent.project_id))
-    proj = proj_res.scalar_one_or_none()
-    if proj and proj.status == "suspended":
-        raise HTTPException(status_code=403, detail="Project is suspended; approval prohibited")
+        proj = (await db.execute(select(ProjectModel).where(ProjectModel.id == agent.project_id))).scalar_one_or_none()
+        if proj and proj.status == "suspended":
+            raise HTTPException(status_code=403, detail="Project is suspended; approval prohibited")
 
-    # Issue execution authorization
-    settings = get_settings()
-    gateway = RuntimeGateway(settings.SECRET_KEY, settings.EXECUTION_AUTH_TTL_SECONDS)
-    stored = StoredAction(
-        action_id=action_record.id,
-        identity=AuthenticatedAgent(agent.organization_id, agent.project_id, agent.id, agent.status),
-        session_id=action_record.session_id,
-        normalized=action_record.normalized_action,
-        digest=action_record.action_digest,
-        decision="ALLOW",
-        correlation_id=action_record.correlation_id,
-        created_at=action_record.created_at,
-    )
-    token, token_expires_at = gateway.issue_authorization(stored)
+        settings = get_settings()
+        token = f"exec_auth_{uuid.uuid4().hex}"
+        from datetime import timedelta
+        token_expires_at = now + timedelta(seconds=settings.EXECUTION_AUTH_TTL_SECONDS)
 
-    # Persist authorization model
-    auth_model = ExecutionAuthorizationModel(
-        id="auth_" + uuid.uuid4().hex,
-        action_id=action_record.id,
-        token_hash=hashlib.sha256(token.encode()).hexdigest(),
-        expires_at=token_expires_at,
-    )
-    db.add(auth_model)
+        auth_model = ExecutionAuthorizationModel(
+            id="auth_" + uuid.uuid4().hex,
+            action_id=llm_record.id,
+            token_hash=hashlib.sha256(token.encode()).hexdigest(),
+            expires_at=token_expires_at,
+        )
+        db.add(auth_model)
 
-    ticket.status = "APPROVED"
-    ticket.approver_id = current_user.id
-    ticket.reason = decision_req.rationale
-    ticket.decided_at = now
+        ticket.status = "APPROVED"
+        ticket.approver_id = current_user.id
+        ticket.reason = decision_req.rationale
+        ticket.decided_at = now
+        ticket.execution_token = token
 
-    action_record.decision = "ALLOW"
-    action_record.execution_status = "APPROVED"
+        llm_record.status = "APPROVED"
+        llm_record.decided_at = now
 
-    await AuditService.record_event(
-        db,
-        organization_id=ticket.organization_id,
-        project_id=action_record.project_id,
-        agent_id=action_record.agent_id,
-        session_id=action_record.session_id,
-        action_id=action_record.id,
-        tool_name=action_record.tool,
-        canonical_action_hash=action_record.action_digest,
-        policy_decision="ALLOW",
-        execution_state="APPROVED",
-        severity="INFO",
-        event_type="approval.approved",
-        details={"ticket_id": ticket.ticket_id, "approver_id": current_user.id, "rationale": decision_req.rationale},
-    )
+        await AuditService.record_event(
+            db,
+            organization_id=ticket.organization_id,
+            project_id=llm_record.project_id,
+            agent_id=llm_record.agent_id,
+            action_id=llm_record.id,
+            tool_name="llm_proxy",
+            canonical_action_hash=llm_record.request_digest,
+            policy_decision="ALLOW",
+            execution_state="APPROVED",
+            severity="INFO",
+            event_type="approval.approved",
+            details={"ticket_id": ticket.ticket_id, "approver_id": current_user.id, "rationale": decision_req.rationale},
+        )
+    else:
+        # Fetch associated runtime action
+        act_res = await db.execute(select(RuntimeActionModel).where(RuntimeActionModel.id == ticket.action_id))
+        action_record = act_res.scalar_one_or_none()
+        if not action_record:
+            raise HTTPException(status_code=404, detail="Bound action record not found")
+
+        # Cryptographic binding check: action hash must match exactly
+        if action_record.action_digest != ticket.canonical_action_hash:
+            ticket.status = "REJECTED"
+            ticket.reason = "Security violation: Action arguments tampered since approval request"
+            await db.commit()
+            raise HTTPException(status_code=409, detail="Action digest mismatch: action has been tampered with")
+
+        # Fetch agent to verify requester/approver separation and suspension status
+        agent_res = await db.execute(select(AgentModel).where(AgentModel.id == action_record.agent_id))
+        agent = agent_res.scalar_one_or_none()
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+
+        # Requester / Approver separation: agent owner cannot approve their own agent's action
+        if agent.owner == current_user.email:
+            raise HTTPException(status_code=403, detail="Requester and approver separation required: agent owner cannot approve")
+
+        # Check suspension status of agent, project, organization
+        if agent.status == "suspended":
+            raise HTTPException(status_code=403, detail="Agent is suspended; approval prohibited")
+
+        org_res = await db.execute(select(OrganizationModel).where(OrganizationModel.id == agent.organization_id))
+        org = org_res.scalar_one_or_none()
+        if org and org.status == "suspended":
+            raise HTTPException(status_code=403, detail="Organization is suspended; approval prohibited")
+
+        proj_res = await db.execute(select(ProjectModel).where(ProjectModel.id == agent.project_id))
+        proj = proj_res.scalar_one_or_none()
+        if proj and proj.status == "suspended":
+            raise HTTPException(status_code=403, detail="Project is suspended; approval prohibited")
+
+        # Issue execution authorization
+        settings = get_settings()
+        gateway = RuntimeGateway(settings.SECRET_KEY, settings.EXECUTION_AUTH_TTL_SECONDS)
+        stored = StoredAction(
+            action_id=action_record.id,
+            identity=AuthenticatedAgent(agent.organization_id, agent.project_id, agent.id, agent.status),
+            session_id=action_record.session_id,
+            normalized=action_record.normalized_action,
+            digest=action_record.action_digest,
+            decision="ALLOW",
+            correlation_id=action_record.correlation_id,
+            created_at=action_record.created_at,
+        )
+        token, token_expires_at = gateway.issue_authorization(stored)
+
+        # Persist authorization model
+        auth_model = ExecutionAuthorizationModel(
+            id="auth_" + uuid.uuid4().hex,
+            action_id=action_record.id,
+            token_hash=hashlib.sha256(token.encode()).hexdigest(),
+            expires_at=token_expires_at,
+        )
+        db.add(auth_model)
+
+        ticket.status = "APPROVED"
+        ticket.approver_id = current_user.id
+        ticket.reason = decision_req.rationale
+        ticket.decided_at = now
+        ticket.execution_token = token
+
+        action_record.decision = "ALLOW"
+        action_record.execution_status = "APPROVED"
+
+        await AuditService.record_event(
+            db,
+            organization_id=ticket.organization_id,
+            project_id=action_record.project_id,
+            agent_id=action_record.agent_id,
+            session_id=action_record.session_id,
+            action_id=action_record.id,
+            tool_name=action_record.tool,
+            canonical_action_hash=action_record.action_digest,
+            policy_decision="ALLOW",
+            execution_state="APPROVED",
+            severity="INFO",
+            event_type="approval.approved",
+            details={"ticket_id": ticket.ticket_id, "approver_id": current_user.id, "rationale": decision_req.rationale},
+        )
     await db.commit()
 
     await ws_manager.broadcast({
@@ -309,9 +380,9 @@ async def reject_ticket(
         select(MembershipModel).where(
             MembershipModel.user_id == current_user.id,
             MembershipModel.organization_id == ticket.organization_id,
-        )
+        ).limit(1)
     )
-    membership = mem_res.scalar_one_or_none()
+    membership = mem_res.scalars().first()
     if not membership or membership.role not in {"administrator", "security_operator", "approver"}:
         raise HTTPException(status_code=403, detail="User not authorized to reject actions for this organization")
 

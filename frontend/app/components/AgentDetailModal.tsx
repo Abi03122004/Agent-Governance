@@ -19,6 +19,11 @@ interface AgentInfo {
   owner: string;
   environment: string;
   purpose: string | null;
+  framework?: string;
+  llm_provider?: string;
+  connection_status?: string;
+  last_seen_at?: string | null;
+  governed_requests_count?: number;
   status: string;
   created_at: string;
   updated_at: string;
@@ -204,6 +209,31 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
               <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px" }}>
                 <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>OWNER</div>
                 <div style={{ fontWeight: 500, color: "var(--text-primary)", fontSize: "0.8125rem", marginTop: "2px" }}>{agent.owner}</div>
+              </div>
+              <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px" }}>
+                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>FRAMEWORK</div>
+                <div style={{
+                  fontWeight: 600,
+                  color: agent.framework?.toLowerCase() === "langgraph"
+                    ? "#10b981"
+                    : agent.framework?.toLowerCase() === "openhands"
+                    ? "#3b82f6"
+                    : agent.framework?.toLowerCase() === "crewai"
+                    ? "#f59e0b"
+                    : "var(--text-primary)",
+                  fontSize: "0.8125rem",
+                  textTransform: "uppercase",
+                  marginTop: "2px"
+                }}>
+                  {agent.framework || "custom"}
+                </div>
+              </div>
+              <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px" }}>
+                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>CONNECTION STATUS</div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "0.8125rem", color: agent.connection_status === "connected" ? "#10b981" : "var(--text-muted)", marginTop: "2px", fontFamily: "var(--font-mono)" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: agent.connection_status === "connected" ? "#10b981" : "#6b7280" }} />
+                  {agent.connection_status || "registered"}
+                </div>
               </div>
               <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px", gridColumn: "span 2" }}>
                 <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>CAPABILITY SCOPE</div>

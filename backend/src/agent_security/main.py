@@ -50,7 +50,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
 
-    # 1. CORS Middleware (Strictly validated)
+    # 1. Correlation ID Middleware (Request-ID and Trace-ID)
+    app.add_middleware(CorrelationIdMiddleware)
+
+    # 2. CORS Middleware (Strictly validated, outermost middleware to guarantee CORS headers on all responses)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=active_settings.CORS_ORIGINS,
@@ -58,9 +61,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
-
-    # 2. Correlation ID Middleware (Request-ID and Trace-ID)
-    app.add_middleware(CorrelationIdMiddleware)
 
     # 3. Structured Error Handling
     register_error_handlers(app)
