@@ -509,12 +509,9 @@ LLM_MODEL=${modelDisplay}`;
       id="modal-add-agent-backdrop"
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(10, 15, 25, 0.75)",
-        backdropFilter: "blur(4px)",
+        inset: 0,
+        background: "rgba(0, 0, 0, 0.85)",
+        backdropFilter: "blur(8px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -525,19 +522,19 @@ LLM_MODEL=${modelDisplay}`;
       <div
         id="modal-add-agent-container"
         style={{
-          background: "#ffffff",
-          border: "1px solid #cbd5e1",
-          borderRadius: "8px",
+          background: "#18171B",
+          border: "1px solid #262529",
+          borderRadius: "22px",
           width: "100%",
-          maxWidth: "680px",
+          maxWidth: "720px",
           maxHeight: "90vh",
           overflowY: "auto",
-          padding: "24px",
+          padding: "24px 28px",
           display: "flex",
           flexDirection: "column",
           gap: "18px",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-          color: "#0f172a",
+          boxShadow: "0 24px 48px rgba(0, 0, 0, 0.7), 0 0 24px rgba(255, 73, 47, 0.12)",
+          color: "#F5F5F5",
         }}
       >
         {/* Modal Header */}
@@ -546,31 +543,32 @@ LLM_MODEL=${modelDisplay}`;
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            borderBottom: "1px solid #e2e8f0",
-            paddingBottom: "12px",
+            borderBottom: "1px solid #262529",
+            paddingBottom: "14px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div
               style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "8px",
-                background: "#f1f5f9",
-                border: "1px solid #cbd5e1",
+                width: "40px",
+                height: "40px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #FF492F 0%, #FF7043 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: "1.2rem",
+                color: "#FFFFFF",
+                boxShadow: "0 0 16px rgba(255, 73, 47, 0.35)",
               }}
             >
               🤖
             </div>
             <div>
-              <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
+              <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#F5F5F5", margin: 0 }}>
                 {successData ? "External Agent Integrated" : "Register External AI Agent"}
               </h2>
-              <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+              <div style={{ fontSize: "0.78rem", color: "#858585", marginTop: "2px" }}>
                 {successData
                   ? "Identity verified & provider credentials vaulted securely"
                   : "Connect OpenHands, LangGraph, CrewAI, AutoGen, or custom Python agents"}
@@ -583,9 +581,9 @@ LLM_MODEL=${modelDisplay}`;
             style={{
               background: "none",
               border: "none",
-              fontSize: "1.1rem",
+              fontSize: "1.2rem",
               cursor: "pointer",
-              color: "#64748b",
+              color: "#858585",
               padding: "4px 8px",
             }}
             aria-label="Close"
@@ -600,10 +598,10 @@ LLM_MODEL=${modelDisplay}`;
             id="add-agent-error-alert"
             style={{
               padding: "10px 14px",
-              borderRadius: "6px",
-              background: "#fef2f2",
-              border: "1px solid #f87171",
-              color: "#991b1b",
+              borderRadius: "10px",
+              background: "rgba(255, 73, 47, 0.14)",
+              border: "1px solid rgba(255, 73, 47, 0.4)",
+              color: "#FF492F",
               fontSize: "0.8125rem",
               display: "flex",
               alignItems: "flex-start",
@@ -621,10 +619,10 @@ LLM_MODEL=${modelDisplay}`;
             {/* Success summary pill */}
             <div
               style={{
-                padding: "12px 14px",
-                background: "#f0fdf4",
-                border: "1px solid #86efac",
-                borderRadius: "6px",
+                padding: "12px 16px",
+                background: "rgba(16, 185, 129, 0.12)",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+                borderRadius: "12px",
                 display: "flex",
                 alignItems: "center",
                 gap: "10px",
@@ -632,12 +630,12 @@ LLM_MODEL=${modelDisplay}`;
             >
               <span style={{ fontSize: "1.2rem" }}>✅</span>
               <div>
-                <div style={{ fontWeight: 700, color: "#166534", fontSize: "0.875rem" }}>
-                  External Agent Successfully Registered & Vaulted
+                <div style={{ fontWeight: 700, color: "#10B981", fontSize: "0.875rem" }}>
+                  External Agent Successfully Registered &amp; Vaulted
                 </div>
-                <div style={{ fontSize: "0.75rem", color: "#374151", marginTop: "2px" }}>
-                  <span style={{ fontWeight: 600 }}>{successData.agent.name}</span> (
-                  <code style={{ background: "#e2e8f0", padding: "1px 5px", borderRadius: "3px", fontFamily: "var(--font-mono)" }}>
+                <div style={{ fontSize: "0.75rem", color: "#A1A1A8", marginTop: "2px" }}>
+                  <span style={{ fontWeight: 600, color: "#F5F5F5" }}>{successData.agent.name}</span> (
+                  <code style={{ background: "#141316", color: "#FF7043", padding: "1px 6px", borderRadius: "4px", fontFamily: "var(--font-mono)" }}>
                     {successData.agent.id}
                   </code>
                   ) is governed under {successData.agent.organization_id}.
@@ -651,21 +649,21 @@ LLM_MODEL=${modelDisplay}`;
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
                 gap: "10px",
-                background: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: "6px",
-                padding: "12px",
+                background: "#141316",
+                border: "1px solid #262529",
+                borderRadius: "12px",
+                padding: "14px",
               }}
             >
               <div>
-                <div style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>LLM GOVERNANCE PROXY URL</div>
-                <code style={{ fontSize: "0.75rem", color: "#0f172a", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
+                <div style={{ fontSize: "0.6875rem", color: "#858585", fontWeight: 600 }}>LLM GOVERNANCE PROXY URL</div>
+                <code style={{ fontSize: "0.75rem", color: "#FF7043", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
                   {proxyUrl}
                 </code>
               </div>
               <div>
-                <div style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>PROVIDER VAULT STATUS</div>
-                <div style={{ fontSize: "0.75rem", color: "#15803d", fontWeight: 600 }}>
+                <div style={{ fontSize: "0.6875rem", color: "#858585", fontWeight: 600 }}>PROVIDER VAULT STATUS</div>
+                <div style={{ fontSize: "0.75rem", color: "#10B981", fontWeight: 600 }}>
                   {successData.agent.provider_key_configured ? "🔒 AES-256-GCM Encrypted in Vault" : "ℹ️ No Upstream Key Vaulted"}
                 </div>
               </div>
@@ -678,19 +676,19 @@ LLM_MODEL=${modelDisplay}`;
                   display: "flex",
                   flexDirection: "column",
                   gap: "8px",
-                  background: "#0f172a",
-                  border: "1px solid #334155",
-                  borderRadius: "6px",
-                  padding: "14px",
-                  color: "#ffffff",
+                  background: "#141316",
+                  border: "1px solid #262529",
+                  borderRadius: "12px",
+                  padding: "14px 16px",
+                  color: "#F5F5F5",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span>🔑</span>
-                    <span style={{ fontWeight: 600, fontSize: "0.8125rem" }}>Agent Runtime Bearer Token</span>
+                    <span style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#F5F5F5" }}>Agent Runtime Bearer Token</span>
                   </div>
-                  <span style={{ fontSize: "0.7rem", color: "#94a3b8", fontFamily: "var(--font-mono)" }}>
+                  <span style={{ fontSize: "0.7rem", color: "#858585", fontFamily: "var(--font-mono)" }}>
                     {successData.credential.id}
                   </span>
                 </div>
@@ -702,11 +700,11 @@ LLM_MODEL=${modelDisplay}`;
                     value={successData.credential.plaintext_secret}
                     style={{
                       flex: 1,
-                      background: "#1e293b",
-                      border: "1px solid #475569",
-                      borderRadius: "4px",
-                      padding: "6px 10px",
-                      color: "#38bdf8",
+                      background: "#0B0B0D",
+                      border: "1px solid #262529",
+                      borderRadius: "8px",
+                      padding: "7px 12px",
+                      color: "#FF8A65",
                       fontFamily: "var(--font-mono)",
                       fontSize: "0.8125rem",
                       outline: "none",
@@ -715,36 +713,21 @@ LLM_MODEL=${modelDisplay}`;
                   <button
                     type="button"
                     onClick={() => setShowSecret(!showSecret)}
-                    style={{
-                      background: "#334155",
-                      border: "none",
-                      color: "#ffffff",
-                      padding: "6px 10px",
-                      borderRadius: "4px",
-                      fontSize: "0.75rem",
-                      cursor: "pointer",
-                    }}
+                    className="btn btn-ghost"
+                    style={{ padding: "6px 12px", fontSize: "0.75rem" }}
                   >
                     {showSecret ? "Hide" : "Show"}
                   </button>
                   <button
                     type="button"
                     onClick={() => copyToClipboard(successData.credential!.plaintext_secret)}
-                    style={{
-                      background: "#2563eb",
-                      border: "none",
-                      color: "#ffffff",
-                      padding: "6px 14px",
-                      borderRadius: "4px",
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
+                    className="btn btn-primary"
+                    style={{ padding: "6px 16px", fontSize: "0.75rem", whiteSpace: "nowrap" }}
                   >
                     {copiedSecret ? "Copied!" : "Copy"}
                   </button>
                 </div>
-                <div style={{ fontSize: "0.72rem", color: "#fbbf24" }}>
+                <div style={{ fontSize: "0.72rem", color: "#FF9800" }}>
                   ⚠️ Save this token now. It will never be displayed in plaintext again.
                 </div>
               </div>
@@ -752,10 +735,10 @@ LLM_MODEL=${modelDisplay}`;
 
             {/* Framework Integration Instructions */}
             <div>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
-                CONNECT YOUR AGENT FRAMEWORK
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#858585", marginBottom: "8px", textTransform: "uppercase" }}>
+                Connect Your Agent Framework
               </div>
-              <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+              <div style={{ display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
                 {[
                   { id: "python", label: "OpenAI / Python SDK" },
                   { id: "langgraph", label: "LangGraph" },
@@ -768,15 +751,16 @@ LLM_MODEL=${modelDisplay}`;
                     type="button"
                     onClick={() => setActiveSnippetTab(t.id as any)}
                     style={{
-                      padding: "4px 10px",
-                      borderRadius: "4px",
+                      padding: "5px 12px",
+                      borderRadius: "8px",
                       fontSize: "0.72rem",
                       fontWeight: 600,
                       border: "1px solid",
-                      borderColor: activeSnippetTab === t.id ? "#2563eb" : "#cbd5e1",
-                      background: activeSnippetTab === t.id ? "#eff6ff" : "#ffffff",
-                      color: activeSnippetTab === t.id ? "#1d4ed8" : "#475569",
+                      borderColor: activeSnippetTab === t.id ? "#FF492F" : "#262529",
+                      background: activeSnippetTab === t.id ? "rgba(255, 73, 47, 0.15)" : "#141316",
+                      color: activeSnippetTab === t.id ? "#FF7043" : "#858585",
                       cursor: "pointer",
+                      transition: "all 0.15s ease",
                     }}
                   >
                     {t.label}
@@ -787,10 +771,11 @@ LLM_MODEL=${modelDisplay}`;
               <div style={{ position: "relative" }}>
                 <pre
                   style={{
-                    background: "#0f172a",
-                    color: "#f8fafc",
-                    padding: "12px",
-                    borderRadius: "6px",
+                    background: "#0B0B0D",
+                    color: "#F5F5F5",
+                    padding: "14px",
+                    borderRadius: "10px",
+                    border: "1px solid #262529",
                     fontSize: "0.75rem",
                     fontFamily: "var(--font-mono)",
                     overflowX: "auto",
@@ -803,17 +788,13 @@ LLM_MODEL=${modelDisplay}`;
                 <button
                   type="button"
                   onClick={() => copyToClipboard(getSnippetContent(activeSnippetTab))}
+                  className="btn btn-ghost"
                   style={{
                     position: "absolute",
                     top: "8px",
                     right: "8px",
-                    background: "#334155",
-                    border: "none",
-                    color: "#ffffff",
                     fontSize: "0.7rem",
-                    padding: "3px 8px",
-                    borderRadius: "4px",
-                    cursor: "pointer",
+                    padding: "4px 10px",
                   }}
                 >
                   Copy Snippet
@@ -825,15 +806,8 @@ LLM_MODEL=${modelDisplay}`;
               <button
                 type="button"
                 onClick={handleClose}
-                style={{
-                  background: "#2563eb",
-                  color: "#ffffff",
-                  padding: "8px 20px",
-                  borderRadius: "6px",
-                  border: "none",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                className="btn btn-primary"
+                style={{ padding: "8px 24px" }}
               >
                 Done
               </button>
@@ -845,7 +819,7 @@ LLM_MODEL=${modelDisplay}`;
             {/* Tenant and Project row */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#858585", marginBottom: "6px" }}>
                   TENANT / ORGANIZATION *
                 </label>
                 <select
@@ -853,21 +827,24 @@ LLM_MODEL=${modelDisplay}`;
                   onChange={(e) => setOrganizationId(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid #cbd5e1",
+                    background: "#141316",
+                    color: "#F5F5F5",
+                    border: "1px solid #262529",
+                    borderRadius: "10px",
+                    padding: "8px 12px",
                     fontSize: "0.8125rem",
+                    outline: "none",
                   }}
                 >
                   {availableOrgs.map((o) => (
-                    <option key={o.id} value={o.id}>
+                    <option key={o.id} value={o.id} style={{ background: "#1C1B1F", color: "#F5F5F5" }}>
                       {o.name} ({o.id})
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#858585", marginBottom: "6px" }}>
                   PROJECT SCOPE *
                 </label>
                 <select
@@ -875,14 +852,17 @@ LLM_MODEL=${modelDisplay}`;
                   onChange={(e) => setProjectId(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid #cbd5e1",
+                    background: "#141316",
+                    color: "#F5F5F5",
+                    border: "1px solid #262529",
+                    borderRadius: "10px",
+                    padding: "8px 12px",
                     fontSize: "0.8125rem",
+                    outline: "none",
                   }}
                 >
                   {availableProjects.map((p) => (
-                    <option key={p.id} value={p.id}>
+                    <option key={p.id} value={p.id} style={{ background: "#1C1B1F", color: "#F5F5F5" }}>
                       {p.name} ({p.id})
                     </option>
                   ))}
@@ -893,7 +873,7 @@ LLM_MODEL=${modelDisplay}`;
             {/* Agent Name and Machine ID */}
             <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "12px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#858585", marginBottom: "6px" }}>
                   Agent Name *
                 </label>
                 <input
@@ -904,15 +884,18 @@ LLM_MODEL=${modelDisplay}`;
                   placeholder="e.g. Production Support Agent"
                   style={{
                     width: "100%",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid #cbd5e1",
+                    background: "#141316",
+                    color: "#F5F5F5",
+                    border: "1px solid #262529",
+                    borderRadius: "10px",
+                    padding: "8px 12px",
                     fontSize: "0.8125rem",
+                    outline: "none",
                   }}
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#858585", marginBottom: "6px" }}>
                   Agent Identifier *
                 </label>
                 <input
@@ -926,11 +909,14 @@ LLM_MODEL=${modelDisplay}`;
                   placeholder="e.g. prod-support-agent"
                   style={{
                     width: "100%",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid #cbd5e1",
+                    background: "#141316",
+                    color: "#F5F5F5",
+                    border: "1px solid #262529",
+                    borderRadius: "10px",
+                    padding: "8px 12px",
                     fontSize: "0.8125rem",
                     fontFamily: "var(--font-mono)",
+                    outline: "none",
                   }}
                 />
               </div>
@@ -939,7 +925,7 @@ LLM_MODEL=${modelDisplay}`;
             {/* Framework & LLM Provider Row */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#858585", marginBottom: "6px" }}>
                   Agent Framework *
                 </label>
                 <select
@@ -947,22 +933,25 @@ LLM_MODEL=${modelDisplay}`;
                   onChange={(e) => setFramework(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid #cbd5e1",
+                    background: "#141316",
+                    color: "#F5F5F5",
+                    border: "1px solid #262529",
+                    borderRadius: "10px",
+                    padding: "8px 12px",
                     fontSize: "0.8125rem",
+                    outline: "none",
                   }}
                 >
-                  <option value="custom">Custom Python Agent</option>
-                  <option value="openhands">OpenHands</option>
-                  <option value="langgraph">LangGraph</option>
-                  <option value="crewai">CrewAI</option>
-                  <option value="autogen">AutoGen</option>
+                  <option value="custom" style={{ background: "#1C1B1F" }}>Custom Python Agent</option>
+                  <option value="openhands" style={{ background: "#1C1B1F" }}>OpenHands</option>
+                  <option value="langgraph" style={{ background: "#1C1B1F" }}>LangGraph</option>
+                  <option value="crewai" style={{ background: "#1C1B1F" }}>CrewAI</option>
+                  <option value="autogen" style={{ background: "#1C1B1F" }}>AutoGen</option>
                 </select>
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#858585", marginBottom: "6px" }}>
                   Upstream Provider *
                 </label>
                 <select
@@ -970,20 +959,23 @@ LLM_MODEL=${modelDisplay}`;
                   onChange={(e) => setLlmProvider(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid #cbd5e1",
+                    background: "#141316",
+                    color: "#F5F5F5",
+                    border: "1px solid #262529",
+                    borderRadius: "10px",
+                    padding: "8px 12px",
                     fontSize: "0.8125rem",
+                    outline: "none",
                   }}
                 >
-                  <option value="openai">OpenAI</option>
-                  <option value="gemini">Google Gemini</option>
-                  <option value="anthropic">Anthropic Claude</option>
+                  <option value="openai" style={{ background: "#1C1B1F" }}>OpenAI</option>
+                  <option value="gemini" style={{ background: "#1C1B1F" }}>Google Gemini</option>
+                  <option value="anthropic" style={{ background: "#1C1B1F" }}>Anthropic Claude</option>
                 </select>
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#858585", marginBottom: "6px" }}>
                   Default Model *
                 </label>
                 <input
@@ -994,10 +986,13 @@ LLM_MODEL=${modelDisplay}`;
                   placeholder="e.g. gpt-4o-mini"
                   style={{
                     width: "100%",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid #cbd5e1",
+                    background: "#141316",
+                    color: "#F5F5F5",
+                    border: "1px solid #262529",
+                    borderRadius: "10px",
+                    padding: "8px 12px",
                     fontSize: "0.8125rem",
+                    outline: "none",
                   }}
                 />
               </div>
@@ -1006,20 +1001,20 @@ LLM_MODEL=${modelDisplay}`;
             {/* Provider API Key Vaulting Box */}
             <div
               style={{
-                background: "#f8fafc",
-                border: "1px solid #cbd5e1",
-                borderRadius: "6px",
-                padding: "12px",
+                background: "#141316",
+                border: "1px solid #262529",
+                borderRadius: "12px",
+                padding: "14px",
                 display: "flex",
                 flexDirection: "column",
-                gap: "6px",
+                gap: "8px",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#0f172a" }}>
+                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#F5F5F5" }}>
                   🔒 UPSTREAM PROVIDER API KEY (VAULT ENCRYPTED)
                 </label>
-                <span style={{ fontSize: "0.68rem", color: "#166534", fontWeight: 600, background: "#dcfce7", padding: "1px 6px", borderRadius: "3px" }}>
+                <span style={{ fontSize: "0.68rem", color: "#10B981", fontWeight: 700, background: "rgba(16, 185, 129, 0.12)", border: "1px solid rgba(16, 185, 129, 0.25)", padding: "1px 6px", borderRadius: "6px" }}>
                   AES-256-GCM
                 </span>
               </div>
@@ -1030,15 +1025,17 @@ LLM_MODEL=${modelDisplay}`;
                 placeholder="sk-proj-... or AIzaSy... (Encrypted at rest on Gateway)"
                 style={{
                   width: "100%",
+                  background: "#0B0B0D",
+                  color: "#F5F5F5",
+                  border: "1px solid #262529",
+                  borderRadius: "8px",
                   padding: "8px 12px",
-                  borderRadius: "6px",
-                  border: "1px solid #94a3b8",
                   fontSize: "0.8125rem",
                   fontFamily: "var(--font-mono)",
                   outline: "none",
                 }}
               />
-              <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
+              <div style={{ fontSize: "0.7rem", color: "#858585" }}>
                 This key is encrypted before saving. Your external agent will connect with its agent bearer token (
                 <code>agt_...</code>) and will never possess this secret directly.
               </div>
@@ -1047,7 +1044,7 @@ LLM_MODEL=${modelDisplay}`;
             {/* Owner Email & Environment */}
             <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "12px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#858585", marginBottom: "6px" }}>
                   Owner (Security Officer) *
                 </label>
                 <input
@@ -1057,16 +1054,19 @@ LLM_MODEL=${modelDisplay}`;
                   onChange={(e) => setOwner(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid #cbd5e1",
+                    background: "#141316",
+                    color: "#F5F5F5",
+                    border: "1px solid #262529",
+                    borderRadius: "10px",
+                    padding: "8px 12px",
                     fontSize: "0.8125rem",
+                    outline: "none",
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#858585", marginBottom: "6px" }}>
                   Environment *
                 </label>
                 <select
@@ -1074,23 +1074,26 @@ LLM_MODEL=${modelDisplay}`;
                   onChange={(e) => setEnvironment(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "7px 10px",
-                    borderRadius: "6px",
-                    border: "1px solid #cbd5e1",
+                    background: "#141316",
+                    color: "#F5F5F5",
+                    border: "1px solid #262529",
+                    borderRadius: "10px",
+                    padding: "8px 12px",
                     fontSize: "0.8125rem",
+                    outline: "none",
                   }}
                 >
-                  <option value="development">Development (dev)</option>
-                  <option value="staging">Staging (staging)</option>
-                  <option value="production">Production (prod)</option>
+                  <option value="development" style={{ background: "#1C1B1F" }}>Development (dev)</option>
+                  <option value="staging" style={{ background: "#1C1B1F" }}>Staging (staging)</option>
+                  <option value="production" style={{ background: "#1C1B1F" }}>Production (prod)</option>
                 </select>
               </div>
             </div>
 
             {/* Purpose */}
             <div>
-              <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
-                Operational Mandate & Allowed Scope
+              <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#858585", marginBottom: "6px" }}>
+                Operational Mandate &amp; Allowed Scope
               </label>
               <textarea
                 rows={2}
@@ -1100,11 +1103,14 @@ LLM_MODEL=${modelDisplay}`;
                 placeholder="Describe the agent's function, tools, and intended security boundary..."
                 style={{
                   width: "100%",
-                  padding: "7px 10px",
-                  borderRadius: "6px",
-                  border: "1px solid #cbd5e1",
+                  background: "#141316",
+                  color: "#F5F5F5",
+                  border: "1px solid #262529",
+                  borderRadius: "10px",
+                  padding: "8px 12px",
                   fontSize: "0.8125rem",
                   resize: "vertical",
+                  outline: "none",
                 }}
               />
             </div>
@@ -1115,40 +1121,24 @@ LLM_MODEL=${modelDisplay}`;
                 display: "flex",
                 justifyContent: "flex-end",
                 gap: "10px",
-                borderTop: "1px solid #e2e8f0",
-                paddingTop: "12px",
+                borderTop: "1px solid #262529",
+                paddingTop: "14px",
               }}
             >
               <button
                 type="button"
                 onClick={handleClose}
                 disabled={isSubmitting}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "6px",
-                  border: "1px solid #cbd5e1",
-                  background: "#f8fafc",
-                  color: "#334155",
-                  fontWeight: 600,
-                  fontSize: "0.8125rem",
-                  cursor: "pointer",
-                }}
+                className="btn btn-ghost"
+                style={{ padding: "8px 18px" }}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                style={{
-                  padding: "8px 20px",
-                  borderRadius: "6px",
-                  border: "none",
-                  background: "#2563eb",
-                  color: "#ffffff",
-                  fontWeight: 600,
-                  fontSize: "0.8125rem",
-                  cursor: "pointer",
-                }}
+                className="btn btn-primary"
+                style={{ padding: "8px 24px" }}
               >
                 {isSubmitting ? "Registering & Encrypting Vault..." : "+ Register & Issue Credentials"}
               </button>

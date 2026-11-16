@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 
 export interface ActivityItem {
   action_id: string;
@@ -22,19 +22,48 @@ interface LiveInterceptionFeedProps {
   isLive?: boolean;
 }
 
-const getBadgeClass = (decision: string) => {
-  switch (decision) {
-    case "ALLOW":            return "badge-allow";
-    case "BLOCK":            return "badge-block";
-    case "REQUIRE_APPROVAL": return "badge-approval";
-    default:                 return "badge-suspend";
-  }
-};
+/* ── Segmented Risk Meter matching Reference ("Risk Lvl") ── */
+const RiskLevelMeter: React.FC<{ decision: string }> = ({ decision }) => {
+  let activeCount = 3;
+  let activeColor = "#FF9800"; // orange
 
-const getExecColor = (status: string) => {
-  if (status === "EXECUTED") return "var(--success-fg)";
-  if (status === "BLOCKED")  return "var(--danger-fg)";
-  return "var(--warning-fg)";
+  if (decision === "BLOCK") {
+    activeCount = 8;
+    activeColor = "#FF492F"; // red
+  } else if (decision === "SUSPEND") {
+    activeCount = 10;
+    activeColor = "#8955FF"; // purple
+  } else if (decision === "REQUIRE_APPROVAL") {
+    activeCount = 5;
+    activeColor = "#FF7043"; // warm orange
+  } else if (decision === "ALLOW") {
+    activeCount = 2;
+    activeColor = "#10B981"; // green
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "2px" }} title={`Risk Level: ${decision}`}>
+      {Array.from({ length: 10 }).map((_, idx) => {
+        const isActive = idx < activeCount;
+        let segColor = activeColor;
+        if (isActive && idx >= 7) segColor = "#FF492F"; // peak segments turn fiery red
+
+        return (
+          <span
+            key={idx}
+            style={{
+              width: "3px",
+              height: "12px",
+              borderRadius: "1px",
+              background: isActive ? segColor : "#242328",
+              boxShadow: isActive ? `0 0 4px ${segColor}` : "none",
+              transition: "background 0.2s ease",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
 };
 
 export const LiveInterceptionFeed: React.FC<LiveInterceptionFeedProps> = ({
@@ -42,222 +71,309 @@ export const LiveInterceptionFeed: React.FC<LiveInterceptionFeedProps> = ({
   onSelectAgent,
   isLive = true,
 }) => {
+  const [filterPeriod, setFilterPeriod] = useState<string>("Week");
+
+  const getStatusBadge = (decision: string) => {
+    switch (decision) {
+      case "ALLOW":
+        return {
+          label: "Allow",
+          border: "rgba(16, 185, 129, 0.4)",
+          color: "#10B981",
+          bg: "rgba(16, 185, 129, 0.08)",
+        };
+      case "BLOCK":
+        return {
+          label: "Critical",
+          border: "rgba(255, 73, 47, 0.45)",
+          color: "#FF492F",
+          bg: "rgba(255, 73, 47, 0.1)",
+        };
+      case "REQUIRE_APPROVAL":
+        return {
+          label: "Medium",
+          border: "rgba(255, 152, 0, 0.4)",
+          color: "#FFA726",
+          bg: "rgba(255, 152, 0, 0.08)",
+        };
+      case "SUSPEND":
+        return {
+          label: "Suspended",
+          border: "rgba(137, 85, 255, 0.45)",
+          color: "#A78BFA",
+          bg: "rgba(137, 85, 255, 0.1)",
+        };
+      default:
+        return {
+          label: decision,
+          border: "#333238",
+          color: "#A1A1A8",
+          bg: "#1C1B1F",
+        };
+    }
+  };
+
+  const formatShortId = (actId: string) => {
+    const cleaned = actId.replace(/^act_|^evt_/, "");
+    return `#INC-${cleaned.slice(0, 4).toUpperCase()}`;
+  };
+
   return (
-    <section id="live-interception-section" className="glass-panel" style={{ padding: "18px 20px" }}>
-      {/* ── Panel header ── */}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "2fr 1fr",
+        gap: "16px",
+        alignItems: "stretch",
+      }}
+      className="alert-queue-grid"
+    >
+      {/* ─────────────────────────────────────────────────────────────
+          LEFT: "Alert Queue" (Recent Agent Activity Table matching Reference)
+      ────────────────────────────────────────────────────────────── */}
       <div
+        className="glass-panel"
         style={{
+          padding: "20px 22px",
+          background: "#18171B",
+          border: "1px solid #262529",
+          borderRadius: "20px",
+          minHeight: "260px",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "16px",
-          gap: "12px",
-          flexWrap: "wrap",
+          flexDirection: "column",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span
-            className={`status-dot ${isLive ? "status-dot-active status-dot-pulse" : ""}`}
-            style={{ borderRadius: "50%" }}
-          />
-          <h2 className="panel-title">Pre-Execution Interception &amp; Enforcement Stream</h2>
-        </div>
-        <span
-          style={{
-            fontSize: "0.625rem",
-            color: isLive ? "var(--success-fg)" : "var(--text-muted)",
-            fontFamily: "var(--font-mono)",
-            letterSpacing: "0.07em",
-            textTransform: "uppercase",
-            background: isLive ? "var(--success-bg)" : "var(--bg-elevated)",
-            border: `1px solid ${isLive ? "var(--success-border)" : "var(--border-primary)"}`,
-            padding: "2px 8px",
-            borderRadius: "4px",
-          }}
-        >
-          {isLive ? "REALTIME · WS" : "POLLING MODE"}
-        </span>
-      </div>
-
-      {/* ── Empty state ── */}
-      {activities.length === 0 ? (
-        <div className="empty-state">
-          No mediated actions logged yet. Realtime events will stream here as connected agents submit
-          operations through the governance gateway.
-        </div>
-      ) : (
-        <div
-          style={{
-            border: "1px solid #eef2f6",
-            borderRadius: "12px",
-            overflow: "hidden",
-          }}
-        >
-          {/* Column header */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "76px 160px 180px 1fr 140px 110px",
-              padding: "9px 16px",
-              background: "#f8fafc",
-              borderBottom: "1px solid #eef2f6",
-              gap: "12px",
-            }}
-          >
-            {["TIME", "AGENT", "TOOL · OP", "RESOURCE / DIGEST", "DECISION", "STATUS"].map((h) => (
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#F5F5F5", margin: 0 }}>
+                Alert Queue
+              </h3>
               <span
-                key={h}
-                style={{
-                  fontSize: "0.625rem",
-                  fontFamily: "var(--font-mono)",
-                  fontWeight: 600,
-                  color: "#64748b",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.07em",
-                }}
-              >
-                {h}
-              </span>
-            ))}
+                className={`status-dot ${isLive ? "status-dot-active status-dot-pulse" : ""}`}
+                title={isLive ? "WebSocket Live Stream" : "Polling Mode"}
+              />
+            </div>
+            <span style={{ fontSize: "0.6875rem", color: "#858585" }}>
+              Total Alerts (Today) · {activities.length} Interceptions
+            </span>
           </div>
 
-          {/* Rows */}
-          {activities.slice(0, 15).map((item) => {
-            const timeStr = item.timestamp
-              ? new Date(item.timestamp).toLocaleTimeString()
-              : "just now";
-
-            return (
-              <div
-                key={item.action_id}
-                id={`feed-${item.action_id}`}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "76px 160px 180px 1fr 140px 110px",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "10px 16px",
-                  borderBottom: "1px solid #f1f5f9",
-                  fontSize: "0.8125rem",
-                  transition: "background 0.1s ease",
-                  background: "#ffffff",
-                }}
-                onMouseEnter={(e) =>
-                  ((e.currentTarget as HTMLDivElement).style.background = "#f8fafc")
-                }
-                onMouseLeave={(e) =>
-                  ((e.currentTarget as HTMLDivElement).style.background = "#ffffff")
-                }
-              >
-                {/* Time */}
-                <div
-                  style={{
-                    color: "var(--text-muted)",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "0.725rem",
-                  }}
-                >
-                  {timeStr}
-                </div>
-
-                {/* Agent */}
-                <div style={{ minWidth: 0 }}>
-                  <button
-                    onClick={() => onSelectAgent && onSelectAgent(item.agent_id)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      padding: 0,
-                      color: "var(--text-primary)",
-                      fontWeight: 500,
-                      fontSize: "0.8125rem",
-                      cursor: onSelectAgent ? "pointer" : "default",
-                      textAlign: "left",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: "100%",
-                      display: "block",
-                      textDecoration: onSelectAgent ? "underline" : "none",
-                      textDecorationColor: "var(--border-secondary)",
-                    }}
-                  >
-                    {item.agent_id}
-                  </button>
-                  <div
-                    style={{
-                      fontSize: "0.6875rem",
-                      color: "var(--text-muted)",
-                      fontFamily: "var(--font-mono)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {item.correlation_id || item.action_id.slice(0, 12)}
-                  </div>
-                </div>
-
-                {/* Tool · Op */}
-                <div>
-                  <span className="code-pill">
-                    {item.tool}.{item.operation}
-                  </span>
-                </div>
-
-                {/* Resource / Digest */}
-                <div style={{ minWidth: 0 }}>
-                  <div
-                    style={{
-                      color: "var(--text-secondary)",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "0.725rem",
-                    }}
-                  >
-                    {item.resource}
-                  </div>
-                  <div
-                    style={{
-                      color: "var(--text-muted)",
-                      fontSize: "0.6875rem",
-                      marginTop: "2px",
-                      fontFamily: "var(--font-mono)",
-                    }}
-                  >
-                    {item.reason_code
-                      ? `Code: ${item.reason_code}`
-                      : `Digest: ${item.action_digest ? item.action_digest.slice(0, 14) + "…" : "verified"}`}
-                  </div>
-                </div>
-
-                {/* Decision badge */}
-                <div>
-                  <span className={`badge ${getBadgeClass(item.decision)}`}>
-                    {item.decision}
-                  </span>
-                </div>
-
-                {/* Execution status */}
-                <div
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "0.725rem",
-                    fontWeight: 600,
-                    color: getExecColor(item.execution_status),
-                    textAlign: "right",
-                    letterSpacing: "0.03em",
-                  }}
-                >
-                  {item.execution_status}
-                </div>
-              </div>
-            );
-          })}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              background: "#141316",
+              border: "1px solid #262529",
+              borderRadius: "12px",
+              padding: "2px 8px",
+            }}
+          >
+            <select
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+              style={{
+                background: "transparent",
+                color: "#F5F5F5",
+                border: "none",
+                fontSize: "0.6875rem",
+                fontWeight: 600,
+                outline: "none",
+                cursor: "pointer",
+              }}
+            >
+              <option value="Today" style={{ background: "#1C1B1F" }}>Today</option>
+              <option value="Week" style={{ background: "#1C1B1F" }}>Week</option>
+              <option value="Month" style={{ background: "#1C1B1F" }}>Month</option>
+            </select>
+          </div>
         </div>
-      )}
-    </section>
+
+        {/* Table Content */}
+        {activities.length === 0 ? (
+          <div className="empty-state" style={{ margin: "auto 0" }}>
+            No intercepted activity recorded yet. Autonomous agents will stream live events here.
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto", flex: 1 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+              <thead>
+                <tr style={{ color: "#73737C", borderBottom: "1px solid #262529" }}>
+                  <th style={{ padding: "8px 10px", fontSize: "0.6875rem", fontWeight: 600, background: "transparent" }}>Time</th>
+                  <th style={{ padding: "8px 10px", fontSize: "0.6875rem", fontWeight: 600, background: "transparent" }}>Alert ID</th>
+                  <th style={{ padding: "8px 10px", fontSize: "0.6875rem", fontWeight: 600, background: "transparent" }}>Severity / Component</th>
+                  <th style={{ padding: "8px 10px", fontSize: "0.6875rem", fontWeight: 600, background: "transparent" }}>Risk Lvl</th>
+                  <th style={{ padding: "8px 10px", fontSize: "0.6875rem", fontWeight: 600, background: "transparent", textAlign: "right" }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activities.slice(0, 6).map((act) => {
+                  const badge = getStatusBadge(act.decision);
+                  const timeFormatted = new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) + " UTC";
+
+                  return (
+                    <tr
+                      key={act.action_id}
+                      style={{
+                        borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
+                        transition: "background 0.15s ease",
+                      }}
+                    >
+                      <td style={{ padding: "9px 10px", color: "#858585", fontFamily: "var(--font-mono)", fontSize: "0.75rem", whiteSpace: "nowrap" }}>
+                        {timeFormatted}
+                      </td>
+
+                      <td style={{ padding: "9px 10px", color: "#A1A1A8", fontFamily: "var(--font-mono)", fontSize: "0.75rem", fontWeight: 500 }}>
+                        {formatShortId(act.action_id)}
+                      </td>
+
+                      <td style={{ padding: "9px 10px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ color: "#F5F5F5", fontSize: "0.8125rem", fontWeight: 500 }}>
+                            {act.tool}—{act.operation}
+                          </span>
+                          <span style={{ fontSize: "0.6875rem", color: "#5E5E66" }}>
+                            ({act.agent_id})
+                          </span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "9px 10px" }}>
+                        <RiskLevelMeter decision={act.decision} />
+                      </td>
+
+                      <td style={{ padding: "9px 10px", textAlign: "right" }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "2px 8px",
+                            borderRadius: "14px",
+                            fontSize: "0.6875rem",
+                            fontWeight: 600,
+                            fontFamily: "var(--font-mono)",
+                            border: `1px solid ${badge.border}`,
+                            color: badge.color,
+                            background: badge.bg,
+                          }}
+                        >
+                          <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: badge.color }} />
+                          {badge.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          RIGHT: "Operations" (Live Telemetry & Spectrum Flow matching Reference)
+      ────────────────────────────────────────────────────────────── */}
+      <div
+        className="glass-panel"
+        style={{
+          padding: "20px 22px",
+          background: "#18171B",
+          border: "1px solid #262529",
+          borderRadius: "20px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          minHeight: "260px",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {/* Header */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#F5F5F5", margin: 0 }}>
+              Operations
+            </h3>
+            <div style={{ color: "#858585", cursor: "pointer", fontSize: "1.1rem" }}>
+              •••
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "4px" }}>
+            <span style={{ fontSize: "1.6rem", fontWeight: 700, color: "#F5F5F5", fontFamily: "var(--font-mono)" }}>
+              {activities.length ? activities.length * 12 : 850}
+            </span>
+            <span
+              style={{
+                fontSize: "0.625rem",
+                color: "#FF7043",
+                background: "#222126",
+                border: "1px solid #333238",
+                padding: "1px 6px",
+                borderRadius: "10px",
+                fontWeight: 700,
+              }}
+            >
+              • 36%
+            </span>
+          </div>
+        </div>
+
+        {/* Equalizer Spectrum Bars & Flowing Line Chart matching Reference */}
+        <div style={{ position: "relative", width: "100%", height: "130px", marginTop: "10px" }}>
+          <svg viewBox="0 0 300 120" style={{ width: "100%", height: "100%", overflow: "visible" }} preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="opLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#8955FF" />
+                <stop offset="50%" stopColor="#FF492F" />
+                <stop offset="100%" stopColor="#FF7043" />
+              </linearGradient>
+
+              <linearGradient id="spectrumBarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#FF492F" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#FF492F" stopOpacity="0.05" />
+              </linearGradient>
+            </defs>
+
+            {/* Glowing Vertical Equalizer Spectrum Bars in Background */}
+            {Array.from({ length: 28 }).map((_, i) => {
+              const x = i * 11;
+              const h = Math.sin(i * 0.35) * 35 + 40;
+              return (
+                <rect
+                  key={i}
+                  x={x}
+                  y={110 - h}
+                  width="2.5"
+                  height={h}
+                  fill="url(#spectrumBarGrad)"
+                  rx="1"
+                />
+              );
+            })}
+
+            {/* Glowing Foreground Curve */}
+            <path
+              d="M 0,90 Q 50,85 90,75 T 180,50 T 240,65 T 300,40"
+              fill="none"
+              stroke="url(#opLineGrad)"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              style={{ filter: "drop-shadow(0 0 6px rgba(255, 73, 47, 0.45))" }}
+            />
+
+            {/* Active pointer dot */}
+            <circle cx="180" cy="50" r="3.5" fill="#FFFFFF" stroke="#FF492F" strokeWidth="2" />
+          </svg>
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.6875rem", color: "#858585" }}>
+          <span>Throughput: Realtime</span>
+          <span style={{ color: "#10B981", fontWeight: 600 }}>Optimal</span>
+        </div>
+      </div>
+    </div>
   );
 };

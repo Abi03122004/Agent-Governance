@@ -114,12 +114,26 @@ export const SystemReadinessWidget: React.FC = () => {
   ];
 
   return (
-    <section id="system-readiness-section" className="glass-panel" style={{ padding: "18px 20px" }}>
+    <section
+      id="system-readiness-section"
+      className="glass-panel"
+      style={{
+        padding: "20px 22px",
+        background: "#18171B",
+        border: "1px solid #262529",
+        borderRadius: "20px",
+      }}
+    >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-        <h2 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)" }}>
-          Platform Infrastructure Health &amp; Readiness Probes
-        </h2>
-        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+        <div>
+          <h2 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#F5F5F5", margin: 0 }}>
+            Platform Infrastructure Health &amp; Readiness Probes
+          </h2>
+          <span style={{ fontSize: "0.6875rem", color: "#858585" }}>
+            Real-time liveness, readiness, and storage engine telemetry
+          </span>
+        </div>
+        <span style={{ fontSize: "0.6875rem", color: "#858585", fontFamily: "var(--font-mono)" }}>
           Probe Sync: {hasMounted && health.checked_at ? health.checked_at : "Checking..."}
         </span>
       </div>
@@ -129,25 +143,25 @@ export const SystemReadinessWidget: React.FC = () => {
           <div
             key={comp.name}
             style={{
-              background: "#ffffff",
-              border: "1px solid #eef2f6",
-              borderRadius: "12px",
+              background: "#141316",
+              border: "1px solid #262529",
+              borderRadius: "14px",
               padding: "16px",
               display: "flex",
               flexDirection: "column",
-              gap: "6px",
-              boxShadow: "0 1px 3px rgba(15, 23, 42, 0.02)",
+              gap: "8px",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.25)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>
+              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#F5F5F5" }}>
                 {comp.name}
               </span>
               <span className={`badge ${comp.healthy ? "badge-allow" : "badge-block"}`} style={{ fontSize: "0.6875rem" }}>
                 {comp.status}
               </span>
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.4" }}>
+            <div style={{ fontSize: "0.75rem", color: "#858585", lineHeight: "1.4" }}>
               {comp.desc}
             </div>
           </div>

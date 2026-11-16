@@ -52,7 +52,6 @@ interface ActionInfo {
 export const AgentDetailModal: React.FC<AgentDetailProps> = ({
   agentId,
   onClose,
-  apiBaseUrl,
   onAgentStatusChanged,
 }) => {
   const [loading, setLoading] = useState(true);
@@ -134,114 +133,132 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
     <div
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(13, 17, 23, 0.85)",
+        inset: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.85)",
+        backdropFilter: "blur(8px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 1000,
-        padding: "16px",
+        padding: "20px",
       }}
       onClick={onClose}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: "800px",
-          maxHeight: "88vh",
+          maxWidth: "840px",
+          maxHeight: "90vh",
           overflowY: "auto",
-          background: "var(--panel-bg)",
-          border: "1px solid var(--border-rule)",
-          borderRadius: "4px",
-          padding: "20px 24px",
+          background: "#18171B",
+          border: "1px solid #262529",
+          borderRadius: "22px",
+          padding: "24px 28px",
           display: "flex",
           flexDirection: "column",
-          gap: "18px",
-          boxShadow: "0 12px 28px rgba(0,0,0,0.6)",
+          gap: "20px",
+          boxShadow: "0 24px 48px rgba(0,0,0,0.7), 0 0 20px rgba(255, 73, 47, 0.12)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-rule)", paddingBottom: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "1.2rem" }}>🤖</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #262529", paddingBottom: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: "42px",
+                height: "42px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #FF492F 0%, #FF7043 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#FFFFFF",
+                fontSize: "1.2rem",
+                boxShadow: "0 0 16px rgba(255, 73, 47, 0.35)",
+              }}
+            >
+              🤖
+            </div>
             <div>
-              <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)" }}>
+              <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#F5F5F5", margin: 0 }}>
                 {loading ? "Loading Agent..." : agent?.name || agentId}
               </h2>
-              <span className="code-pill">
+              <span className="code-pill" style={{ marginTop: "3px" }}>
                 {agentId}
               </span>
             </div>
           </div>
           <button
-            className="btn btn-ghost"
             onClick={onClose}
-            style={{ fontSize: "0.85rem", padding: "4px 8px" }}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#858585",
+              cursor: "pointer",
+              fontSize: "1.2rem",
+              padding: "4px",
+            }}
+            aria-label="Close"
           >
             ✕
           </button>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
+          <div style={{ textAlign: "center", padding: "40px", color: "#858585", fontSize: "0.8125rem" }}>
             Loading telemetry and activity history...
           </div>
         ) : agent ? (
           <>
             {/* Identity Grid */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
-              <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px" }}>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>ORGANIZATION</div>
-                <div style={{ fontWeight: 500, color: "var(--text-primary)", fontSize: "0.8125rem", marginTop: "2px" }}>{agent.organization_id}</div>
+              <div style={{ background: "#141316", border: "1px solid #262529", padding: "12px 14px", borderRadius: "12px" }}>
+                <div style={{ fontSize: "0.6875rem", color: "#858585", fontFamily: "var(--font-mono)" }}>ORGANIZATION</div>
+                <div style={{ fontWeight: 600, color: "#F5F5F5", fontSize: "0.8125rem", marginTop: "3px" }}>{agent.organization_id}</div>
               </div>
-              <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px" }}>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>PROJECT</div>
-                <div style={{ fontWeight: 500, color: "var(--text-primary)", fontSize: "0.8125rem", marginTop: "2px" }}>{agent.project_id}</div>
+              <div style={{ background: "#141316", border: "1px solid #262529", padding: "12px 14px", borderRadius: "12px" }}>
+                <div style={{ fontSize: "0.6875rem", color: "#858585", fontFamily: "var(--font-mono)" }}>PROJECT</div>
+                <div style={{ fontWeight: 600, color: "#F5F5F5", fontSize: "0.8125rem", marginTop: "3px" }}>{agent.project_id}</div>
               </div>
-              <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px" }}>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>ENVIRONMENT</div>
-                <div style={{ fontWeight: 600, color: "#79C0FF", fontSize: "0.8125rem", textTransform: "uppercase", marginTop: "2px" }}>{agent.environment}</div>
+              <div style={{ background: "#141316", border: "1px solid #262529", padding: "12px 14px", borderRadius: "12px" }}>
+                <div style={{ fontSize: "0.6875rem", color: "#858585", fontFamily: "var(--font-mono)" }}>ENVIRONMENT</div>
+                <div style={{ fontWeight: 700, color: "#FF7043", fontSize: "0.8125rem", textTransform: "uppercase", marginTop: "3px" }}>{agent.environment}</div>
               </div>
-              <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px" }}>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>OWNER</div>
-                <div style={{ fontWeight: 500, color: "var(--text-primary)", fontSize: "0.8125rem", marginTop: "2px" }}>{agent.owner}</div>
+              <div style={{ background: "#141316", border: "1px solid #262529", padding: "12px 14px", borderRadius: "12px" }}>
+                <div style={{ fontSize: "0.6875rem", color: "#858585", fontFamily: "var(--font-mono)" }}>OWNER</div>
+                <div style={{ fontWeight: 600, color: "#F5F5F5", fontSize: "0.8125rem", marginTop: "3px" }}>{agent.owner}</div>
               </div>
-              <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px" }}>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>FRAMEWORK</div>
+              <div style={{ background: "#141316", border: "1px solid #262529", padding: "12px 14px", borderRadius: "12px" }}>
+                <div style={{ fontSize: "0.6875rem", color: "#858585", fontFamily: "var(--font-mono)" }}>FRAMEWORK</div>
                 <div style={{
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: agent.framework?.toLowerCase() === "langgraph"
-                    ? "#10b981"
+                    ? "#10B981"
                     : agent.framework?.toLowerCase() === "openhands"
-                    ? "#3b82f6"
-                    : agent.framework?.toLowerCase() === "crewai"
-                    ? "#f59e0b"
-                    : "var(--text-primary)",
+                    ? "#FF7043"
+                    : "#A78BFA",
                   fontSize: "0.8125rem",
                   textTransform: "uppercase",
-                  marginTop: "2px"
+                  marginTop: "3px"
                 }}>
                   {agent.framework || "custom"}
                 </div>
               </div>
-              <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px" }}>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>CONNECTION STATUS</div>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "0.8125rem", color: agent.connection_status === "connected" ? "#10b981" : "var(--text-muted)", marginTop: "2px", fontFamily: "var(--font-mono)" }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: agent.connection_status === "connected" ? "#10b981" : "#6b7280" }} />
+              <div style={{ background: "#141316", border: "1px solid #262529", padding: "12px 14px", borderRadius: "12px" }}>
+                <div style={{ fontSize: "0.6875rem", color: "#858585", fontFamily: "var(--font-mono)" }}>CONNECTION STATUS</div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.8125rem", color: agent.connection_status === "connected" ? "#10B981" : "#858585", marginTop: "3px", fontFamily: "var(--font-mono)" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: agent.connection_status === "connected" ? "#10B981" : "#52525A" }} />
                   {agent.connection_status || "registered"}
                 </div>
               </div>
-              <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px", gridColumn: "span 2" }}>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>CAPABILITY SCOPE</div>
-                <div style={{ color: "var(--text-secondary)", fontSize: "0.8125rem", marginTop: "2px", maxWidth: "65ch" }}>{agent.purpose || "General autonomous tasks"}</div>
+              <div style={{ background: "#141316", border: "1px solid #262529", padding: "12px 14px", borderRadius: "12px", gridColumn: "span 2" }}>
+                <div style={{ fontSize: "0.6875rem", color: "#858585", fontFamily: "var(--font-mono)" }}>CAPABILITY SCOPE</div>
+                <div style={{ color: "#A1A1A8", fontSize: "0.8125rem", marginTop: "3px" }}>{agent.purpose || "General autonomous tasks"}</div>
               </div>
-              <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "10px 12px", borderRadius: "3px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ background: "#141316", border: "1px solid #262529", padding: "12px 14px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
-                  <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>STATUS</div>
+                  <div style={{ fontSize: "0.6875rem", color: "#858585", fontFamily: "var(--font-mono)" }}>STATUS</div>
                   <span className={`badge ${agent.status === "active" ? "badge-allow" : "badge-block"}`} style={{ marginTop: "4px" }}>
                     {agent.status.toUpperCase()}
                   </span>
@@ -250,7 +267,7 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
                   className={agent.status === "active" ? "btn btn-danger" : "btn btn-primary"}
                   onClick={toggleStatus}
                   disabled={updatingStatus}
-                  style={{ fontSize: "0.75rem", padding: "5px 10px" }}
+                  style={{ fontSize: "0.75rem", padding: "5px 12px" }}
                 >
                   {updatingStatus ? "Updating..." : agent.status === "active" ? "Suspend Agent" : "Activate Agent"}
                 </button>
@@ -258,13 +275,13 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
             </div>
 
             {/* Cryptographic Credential Management */}
-            <div style={{ background: "var(--surface-plate)", border: "1px solid var(--border-rule)", padding: "12px 14px", borderRadius: "3px" }}>
+            <div style={{ background: "#141316", border: "1px solid #262529", padding: "14px 16px", borderRadius: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
                 <div>
-                  <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                  <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#F5F5F5" }}>
                     Cryptographic Bearer Secret Key
                   </div>
-                  <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#858585", marginTop: "2px" }}>
                     Rotating secret generates a new high-entropy token and immediately deactivates previous active credentials.
                   </div>
                 </div>
@@ -273,19 +290,19 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
                   className="btn btn-ghost"
                   onClick={handleRotateKey}
                   disabled={rotatingKey}
-                  style={{ fontSize: "0.75rem", padding: "5px 12px", border: "1px solid var(--border-rule)", color: "#79C0FF" }}
+                  style={{ fontSize: "0.75rem", padding: "5px 12px", color: "#FF7043" }}
                 >
                   {rotatingKey ? "Rotating..." : "🔄 Rotate Secret Key"}
                 </button>
               </div>
 
               {newSecret && (
-                <div style={{ marginTop: "10px", padding: "10px 12px", background: "rgba(56, 139, 253, 0.1)", border: "1px solid rgba(56, 139, 253, 0.3)", borderRadius: "3px" }}>
-                  <div style={{ fontSize: "0.72rem", color: "#FFA198", fontWeight: 600, marginBottom: "4px" }}>
+                <div style={{ marginTop: "12px", padding: "12px 14px", background: "rgba(255, 73, 47, 0.1)", border: "1px solid rgba(255, 73, 47, 0.3)", borderRadius: "10px" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#FF7043", fontWeight: 700, marginBottom: "6px" }}>
                     ⚠ NEW SECRET GENERATED (SINGLE VIEW — SAVE NOW):
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "#79C0FF", wordBreak: "break-all", background: "var(--canvas-bg)", padding: "6px 8px", borderRadius: "2px" }}>
+                    <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "#FF8A65", wordBreak: "break-all", background: "#0B0B0D", padding: "8px 10px", borderRadius: "8px", border: "1px solid #262529" }}>
                       {newSecret}
                     </code>
                     <button
@@ -295,7 +312,7 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
                         setCopiedSecret(true);
                         setTimeout(() => setCopiedSecret(false), 3000);
                       }}
-                      style={{ fontSize: "0.75rem", padding: "6px 12px", whiteSpace: "nowrap" }}
+                      style={{ fontSize: "0.75rem", padding: "6px 14px", whiteSpace: "nowrap" }}
                     >
                       {copiedSecret ? "Copied!" : "Copy"}
                     </button>
@@ -306,33 +323,33 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
 
             {/* Sessions Table */}
             <div>
-              <h3 style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "8px" }}>
+              <h3 style={{ fontSize: "0.875rem", fontWeight: 600, color: "#F5F5F5", marginBottom: "8px" }}>
                 Runtime Sessions ({sessions.length})
               </h3>
               {sessions.length === 0 ? (
-                <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", padding: "10px", background: "var(--surface-plate)", border: "1px solid var(--border-rule)", borderRadius: "3px" }}>
+                <div style={{ color: "#858585", fontSize: "0.75rem", padding: "14px", background: "#141316", border: "1px solid #262529", borderRadius: "10px", textAlign: "center" }}>
                   No active or past sessions found.
                 </div>
               ) : (
-                <div style={{ overflowX: "auto", maxHeight: "150px", border: "1px solid var(--border-rule)", borderRadius: "3px" }}>
+                <div style={{ overflowX: "auto", maxHeight: "160px", border: "1px solid #262529", borderRadius: "12px" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem", textAlign: "left" }}>
                     <thead>
-                      <tr style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-rule)" }}>
-                        <th style={{ padding: "6px 10px" }}>Session ID</th>
-                        <th style={{ padding: "6px 10px" }}>Status</th>
-                        <th style={{ padding: "6px 10px" }}>Started At</th>
+                      <tr style={{ color: "#858585", borderBottom: "1px solid #262529", background: "#141316" }}>
+                        <th style={{ padding: "8px 12px" }}>Session ID</th>
+                        <th style={{ padding: "8px 12px" }}>Status</th>
+                        <th style={{ padding: "8px 12px" }}>Started At</th>
                       </tr>
                     </thead>
                     <tbody>
                       {sessions.map((s) => (
-                        <tr key={s.session_id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                          <td style={{ padding: "6px 10px", fontFamily: "var(--font-mono)", color: "#79C0FF" }}>{s.session_id}</td>
-                          <td style={{ padding: "6px 10px" }}>
+                        <tr key={s.session_id} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.04)" }}>
+                          <td style={{ padding: "8px 12px", fontFamily: "var(--font-mono)", color: "#FF7043" }}>{s.session_id}</td>
+                          <td style={{ padding: "8px 12px" }}>
                             <span className={`badge ${s.status === "active" ? "badge-allow" : "badge-block"}`}>
                               {s.status}
                             </span>
                           </td>
-                          <td style={{ padding: "6px 10px", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                          <td style={{ padding: "8px 12px", color: "#858585", fontFamily: "var(--font-mono)" }}>
                             {new Date(s.started_at).toLocaleTimeString()}
                           </td>
                         </tr>
@@ -345,45 +362,45 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
 
             {/* Recent Actions */}
             <div>
-              <h3 style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "8px" }}>
+              <h3 style={{ fontSize: "0.875rem", fontWeight: 600, color: "#F5F5F5", marginBottom: "8px" }}>
                 Recent Evaluated Actions ({actions.length})
               </h3>
               {actions.length === 0 ? (
-                <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", padding: "10px", background: "var(--surface-plate)", border: "1px solid var(--border-rule)", borderRadius: "3px" }}>
+                <div style={{ color: "#858585", fontSize: "0.75rem", padding: "14px", background: "#141316", border: "1px solid #262529", borderRadius: "10px", textAlign: "center" }}>
                   No mediated actions recorded yet.
                 </div>
               ) : (
-                <div style={{ overflowX: "auto", maxHeight: "220px", border: "1px solid var(--border-rule)", borderRadius: "3px" }}>
+                <div style={{ overflowX: "auto", maxHeight: "200px", border: "1px solid #262529", borderRadius: "12px" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem", textAlign: "left" }}>
                     <thead>
-                      <tr style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-rule)" }}>
-                        <th style={{ padding: "6px 10px" }}>Time</th>
-                        <th style={{ padding: "6px 10px" }}>Tool & Op</th>
-                        <th style={{ padding: "6px 10px" }}>Resource</th>
-                        <th style={{ padding: "6px 10px" }}>Decision</th>
-                        <th style={{ padding: "6px 10px" }}>Execution</th>
-                        <th style={{ padding: "6px 10px" }}>Digest</th>
+                      <tr style={{ color: "#858585", borderBottom: "1px solid #262529", background: "#141316" }}>
+                        <th style={{ padding: "8px 12px" }}>Time</th>
+                        <th style={{ padding: "8px 12px" }}>Tool &amp; Op</th>
+                        <th style={{ padding: "8px 12px" }}>Resource</th>
+                        <th style={{ padding: "8px 12px" }}>Decision</th>
+                        <th style={{ padding: "8px 12px" }}>Execution</th>
+                        <th style={{ padding: "8px 12px" }}>Digest</th>
                       </tr>
                     </thead>
                     <tbody>
                       {actions.map((act) => (
-                        <tr key={act.action_id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                          <td style={{ padding: "6px 10px", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                        <tr key={act.action_id} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.04)" }}>
+                          <td style={{ padding: "8px 12px", color: "#858585", fontFamily: "var(--font-mono)" }}>
                             {new Date(act.timestamp).toLocaleTimeString()}
                           </td>
-                          <td style={{ padding: "6px 10px" }}>
+                          <td style={{ padding: "8px 12px" }}>
                             <span className="code-pill">{act.tool}.{act.operation}</span>
                           </td>
-                          <td style={{ padding: "6px 10px", color: "var(--text-secondary)" }}>{act.resource}</td>
-                          <td style={{ padding: "6px 10px" }}>
+                          <td style={{ padding: "8px 12px", color: "#A1A1A8" }}>{act.resource}</td>
+                          <td style={{ padding: "8px 12px" }}>
                             <span className={`badge ${getBadgeClass(act.decision)}`}>
                               {act.decision}
                             </span>
                           </td>
-                          <td style={{ padding: "6px 10px", color: act.execution_status === "EXECUTED" ? "var(--status-allow-fg)" : "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>
+                          <td style={{ padding: "8px 12px", color: act.execution_status === "EXECUTED" ? "#10B981" : "#858585", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>
                             {act.execution_status}
                           </td>
-                          <td style={{ padding: "6px 10px", fontFamily: "var(--font-mono)", fontSize: "0.7rem", color: "#79C0FF" }}>
+                          <td style={{ padding: "8px 12px", fontFamily: "var(--font-mono)", fontSize: "0.7rem", color: "#A78BFA" }}>
                             {act.action_digest ? act.action_digest.slice(0, 10) + "..." : "-"}
                           </td>
                         </tr>
@@ -397,11 +414,11 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
             {/* Human Operator Danger Zone */}
             <div
               style={{
-                marginTop: "12px",
+                marginTop: "10px",
                 padding: "14px 16px",
-                background: "rgba(239, 68, 68, 0.05)",
-                border: "1px solid rgba(239, 68, 68, 0.25)",
-                borderRadius: "3px",
+                background: "rgba(255, 73, 47, 0.08)",
+                border: "1px solid rgba(255, 73, 47, 0.25)",
+                borderRadius: "14px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -410,11 +427,11 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
               }}
             >
               <div>
-                <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--danger-fg, #ef4444)", display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "#FF492F", display: "flex", alignItems: "center", gap: "6px" }}>
                   <span>🛡️ HUMAN OPERATOR CONTROL:</span>
                   <span>Permanently Remove Agent</span>
                 </div>
-                <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                <div style={{ fontSize: "0.72rem", color: "#858585", marginTop: "2px" }}>
                   Permanently purges agent identity, cascades credentials deletion, and cleans up historical sessions.
                 </div>
               </div>
@@ -445,7 +462,7 @@ export const AgentDetailModal: React.FC<AgentDetailProps> = ({
             />
           </>
         ) : (
-          <div style={{ color: "var(--status-block-fg)", textAlign: "center" }}>
+          <div style={{ color: "#FF492F", textAlign: "center" }}>
             Could not find agent with id: {agentId}
           </div>
         )}

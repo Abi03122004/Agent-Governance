@@ -55,8 +55,8 @@ export const HumanPurgeModal: React.FC<HumanPurgeModalProps> = ({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(5, 10, 14, 0.88)",
-        backdropFilter: "blur(6px)",
+        background: "rgba(0, 0, 0, 0.85)",
+        backdropFilter: "blur(8px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -67,64 +67,47 @@ export const HumanPurgeModal: React.FC<HumanPurgeModalProps> = ({
     >
       <div
         style={{
-          background: "var(--bg-panel)",
-          border: "1px solid rgba(239, 68, 68, 0.4)",
-          borderRadius: "var(--radius-lg)",
+          background: "#18171B",
+          border: "1px solid rgba(255, 73, 47, 0.4)",
+          borderRadius: "22px",
           width: "100%",
           maxWidth: "520px",
-          padding: "24px",
+          padding: "24px 26px",
           display: "flex",
           flexDirection: "column",
           gap: "18px",
-          boxShadow: "0 24px 48px rgba(0, 0, 0, 0.7), 0 0 24px rgba(239, 68, 68, 0.15)",
+          boxShadow: "0 24px 48px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 73, 47, 0.15)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div
               style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "8px",
-                background: "rgba(239, 68, 68, 0.12)",
-                border: "1px solid rgba(239, 68, 68, 0.35)",
+                width: "40px",
+                height: "40px",
+                borderRadius: "12px",
+                background: "rgba(255, 73, 47, 0.14)",
+                border: "1px solid rgba(255, 73, 47, 0.35)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "var(--danger-fg)",
+                color: "#FF492F",
                 flexShrink: 0,
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
             <div>
-              <div
-                style={{
-                  fontSize: "0.625rem",
-                  fontFamily: "var(--font-mono)",
-                  fontWeight: 700,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: "var(--danger-fg)",
-                }}
-              >
-                HUMAN-ONLY CONTROL PLANE
+              <div style={{ fontSize: "0.6875rem", fontFamily: "var(--font-mono)", color: "#FF492F", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Human Operator Action
               </div>
-              <h2
-                style={{
-                  fontSize: "1.0625rem",
-                  fontWeight: 700,
-                  color: "var(--text-primary)",
-                  margin: "2px 0 0",
-                  letterSpacing: "-0.01em",
-                }}
-              >
+              <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#F5F5F5", margin: "2px 0 0" }}>
                 {title}
               </h2>
             </div>
@@ -134,153 +117,150 @@ export const HumanPurgeModal: React.FC<HumanPurgeModalProps> = ({
             style={{
               background: "transparent",
               border: "none",
-              color: "var(--text-muted)",
-              fontSize: "1.25rem",
+              color: "#858585",
               cursor: "pointer",
+              fontSize: "1.2rem",
               padding: "4px",
+              lineHeight: 1,
             }}
+            aria-label="Close modal"
           >
             ✕
           </button>
         </div>
 
-        {/* Security Warning Notice */}
+        {/* Target Description */}
         <div
           style={{
-            background: "rgba(239, 68, 68, 0.08)",
-            border: "1px solid rgba(239, 68, 68, 0.25)",
-            borderRadius: "6px",
+            background: "#141316",
+            border: "1px solid #262529",
+            borderRadius: "12px",
             padding: "12px 14px",
             display: "flex",
             flexDirection: "column",
-            gap: "6px",
+            gap: "4px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--danger-fg)", fontSize: "0.75rem", fontWeight: 600 }}>
-            <span>⚠️</span>
-            <span>RESTRICTED HUMAN OPERATOR PRIVILEGE</span>
-          </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.45 }}>
-            {warningNote}
-          </div>
-          <div style={{ fontSize: "0.6875rem", fontFamily: "var(--font-mono)", color: "var(--text-muted)", marginTop: "2px" }}>
-            Target: <span style={{ color: "var(--text-primary)" }}>{targetDescription}</span>
-          </div>
+          <span style={{ fontSize: "0.6875rem", color: "#858585", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+            Scope Target:
+          </span>
+          <span style={{ fontSize: "0.875rem", color: "#F5F5F5", fontWeight: 600, fontFamily: "var(--font-mono)" }}>
+            {targetDescription}
+          </span>
         </div>
 
-        {/* Form */}
+        {/* Warning Note */}
+        <div
+          style={{
+            background: "rgba(255, 73, 47, 0.08)",
+            border: "1px solid rgba(255, 73, 47, 0.25)",
+            borderRadius: "12px",
+            padding: "12px 14px",
+            color: "#FFA198",
+            fontSize: "0.78125rem",
+            lineHeight: "1.5",
+          }}
+        >
+          <strong>Warning: </strong>{warningNote}
+        </div>
+
+        {errorMessage && (
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "rgba(255, 73, 47, 0.15)",
+              border: "1px solid rgba(255, 73, 47, 0.4)",
+              color: "#FF492F",
+              borderRadius: "8px",
+              fontSize: "0.75rem",
+            }}
+          >
+            {errorMessage}
+          </div>
+        )}
+
+        {/* Confirmation Form */}
         <form onSubmit={handleExecute} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
             <label
-              htmlFor="confirmation-input"
-              style={{
-                display: "block",
-                fontSize: "0.75rem",
-                color: "var(--text-secondary)",
-                marginBottom: "6px",
-                fontFamily: "var(--font-mono)",
-              }}
+              htmlFor="purge-rationale"
+              style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#F5F5F5", marginBottom: "6px" }}
             >
-              Type <strong style={{ color: "var(--danger-fg)" }}>CONFIRM</strong> to authorize deletion:
+              Operator Rationale <span style={{ color: "#858585" }}>(Required for cryptographic audit trail)</span>
             </label>
-            <input
-              id="confirmation-input"
-              type="text"
-              autoFocus
-              value={confirmationInput}
-              onChange={(e) => setConfirmationInput(e.target.value)}
-              placeholder="CONFIRM"
+            <textarea
+              id="purge-rationale"
+              required
+              rows={2}
+              placeholder="e.g. End of sprint test cleanup authorized by security engineer"
+              value={rationale}
+              onChange={(e) => setRationale(e.target.value)}
               style={{
                 width: "100%",
+                background: "#141316",
+                color: "#F5F5F5",
+                border: "1px solid #262529",
+                borderRadius: "10px",
                 padding: "8px 12px",
-                background: "var(--bg-code)",
-                border: isConfirmed ? "1px solid var(--danger-fg)" : "1px solid var(--border-primary)",
-                borderRadius: "var(--radius-sm)",
-                color: "var(--text-primary)",
-                fontFamily: "var(--font-mono)",
+                fontSize: "0.8125rem",
+                outline: "none",
+                resize: "vertical",
+              }}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="purge-confirmation-input"
+              style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#F5F5F5", marginBottom: "6px" }}
+            >
+              Type <strong style={{ color: "#FF492F" }}>CONFIRM</strong> to authorize this destructive operation
+            </label>
+            <input
+              id="purge-confirmation-input"
+              type="text"
+              autoComplete="off"
+              required
+              placeholder="CONFIRM"
+              value={confirmationInput}
+              onChange={(e) => setConfirmationInput(e.target.value)}
+              style={{
+                width: "100%",
+                background: "#141316",
+                color: "#F5F5F5",
+                border: "1px solid #262529",
+                borderRadius: "10px",
+                padding: "8px 12px",
                 fontSize: "0.875rem",
-                letterSpacing: "0.05em",
+                fontFamily: "var(--font-mono)",
                 outline: "none",
               }}
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="operator-rationale"
-              style={{
-                display: "block",
-                fontSize: "0.75rem",
-                color: "var(--text-secondary)",
-                marginBottom: "4px",
-              }}
-            >
-              Operator Rationale (Recorded in immutable audit event):
-            </label>
-            <input
-              id="operator-rationale"
-              type="text"
-              value={rationale}
-              onChange={(e) => setRationale(e.target.value)}
-              placeholder="e.g. End-of-cycle cleanup / Test agent decommission"
-              style={{
-                width: "100%",
-                padding: "7px 10px",
-                background: "var(--bg-code)",
-                border: "1px solid var(--border-primary)",
-                borderRadius: "var(--radius-sm)",
-                color: "var(--text-primary)",
-                fontSize: "0.8125rem",
-              }}
-            />
-          </div>
-
-          {errorMessage && (
-            <div
-              style={{
-                padding: "8px 12px",
-                borderRadius: "4px",
-                background: "var(--danger-bg)",
-                border: "1px solid var(--danger-border)",
-                color: "var(--danger-fg)",
-                fontSize: "0.75rem",
-              }}
-            >
-              {errorMessage}
-            </div>
-          )}
-
-          {/* Footer actions */}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "4px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px", marginTop: "6px" }}>
             <button
               type="button"
               className="btn btn-ghost"
               onClick={onClose}
               disabled={isSubmitting}
-              style={{ padding: "6px 14px" }}
+              style={{ padding: "8px 16px" }}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!isConfirmed || isSubmitting}
+              className="btn btn-primary"
+              disabled={!isConfirmed || isSubmitting || !rationale.trim()}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "6px 16px",
-                borderRadius: "var(--radius-sm)",
-                background: isConfirmed ? "var(--danger-fg)" : "rgba(239, 68, 68, 0.2)",
-                color: isConfirmed ? "#081115" : "var(--text-muted)",
+                padding: "8px 18px",
+                background: isConfirmed && rationale.trim() ? "linear-gradient(135deg, #FF492F 0%, #D32F2F 100%)" : "#262529",
+                color: isConfirmed && rationale.trim() ? "#FFFFFF" : "#858585",
                 border: "none",
-                fontWeight: 700,
-                fontSize: "0.8125rem",
-                fontFamily: "var(--font-mono)",
-                cursor: isConfirmed && !isSubmitting ? "pointer" : "not-allowed",
-                transition: "all 0.15s ease",
+                boxShadow: isConfirmed && rationale.trim() ? "0 4px 14px rgba(255, 73, 47, 0.4)" : "none",
               }}
             >
-              {isSubmitting ? "Purging..." : actionButtonText}
+              {isSubmitting ? "Purging…" : actionButtonText}
             </button>
           </div>
         </form>

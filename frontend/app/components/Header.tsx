@@ -9,19 +9,34 @@ interface HeaderProps {
   selectedTenant?: string;
   onSelectTenant?: (tenant: string) => void;
   isGatewayHealthy?: boolean;
+  onCheckAlerts?: () => void;
+  activeTab?: string;
 }
 
-/* ── Inline SVG icons ── */
-const PowerIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
-    <line x1="12" y1="2" x2="12" y2="12" />
+const SearchIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
   </svg>
 );
 
-const ChevronIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <polyline points="4,6 8,10 12,6" />
+const BellIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+);
+
+const ChevronDownIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
+const PowerIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+    <line x1="12" y1="2" x2="12" y2="12" />
   </svg>
 );
 
@@ -30,10 +45,12 @@ export const Header: React.FC<HeaderProps> = ({
   isKilled,
   selectedTenant: externalSelectedTenant,
   onSelectTenant: externalOnSelectTenant,
-  isGatewayHealthy = true,
+  onCheckAlerts,
+  activeTab = "overview",
 }) => {
   const [internalTenant, setInternalTenant] = useState("");
   const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const selectedTenant = externalSelectedTenant ?? internalTenant;
   const setSelectedTenant = externalOnSelectTenant ?? setInternalTenant;
 
@@ -46,209 +63,249 @@ export const Header: React.FC<HeaderProps> = ({
           setOrganizations(orgs);
         }
       } catch {
-        /* backend offline or initial load */
+        /* offline or initial load */
       }
     };
     void fetchOrgs();
-    const interval = setInterval(fetchOrgs, 15000);
+    const interval = setInterval(fetchOrgs, 20000);
     return () => {
       active = false;
       clearInterval(interval);
     };
   }, []);
 
+  const getBreadcrumbTitle = (tab: string) => {
+    switch (tab) {
+      case "agents": return "Agent Fleet & Identities";
+      case "sessions": return "Runtime Sessions";
+      case "approvals": return "Human Approval Queue";
+      case "activity": return "Interception & Activity Feed";
+      case "audit": return "Cryptographic Audit Ledger";
+      case "policies": return "Security Policies";
+      case "health": return "System Readiness & Health";
+      default: return "Dashboard";
+    }
+  };
+
   return (
     <header
       id="platform-header"
       style={{
-        height: "60px",
-        background: "#ffffff",
-        borderBottom: "1px solid #eef2f6",
-        boxShadow: "0 1px 3px rgba(15, 23, 42, 0.03)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "0 24px",
+        padding: "16px 28px 8px 28px",
+        background: "transparent",
         position: "sticky",
         top: 0,
-        zIndex: 50,
+        zIndex: 30,
         gap: "16px",
         flexShrink: 0,
       }}
     >
-      {/* ── Left: title + version pill ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
-        <h1
-          style={{
-            fontSize: "0.875rem",
-            fontWeight: 600,
-            color: "#0f172a",
-            letterSpacing: "-0.01em",
-            whiteSpace: "nowrap",
-            margin: 0,
-          }}
-        >
-          Autonomous AI Agent Security &amp; Runtime Governance
-        </h1>
+      {/* ── Left Breadcrumb Tag ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <span
           style={{
-            fontSize: "0.625rem",
-            fontFamily: "var(--font-mono)",
-            color: "#64748b",
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            padding: "2px 7px",
-            borderRadius: "6px",
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
-            fontWeight: 600,
+            fontSize: "0.8125rem",
+            fontWeight: 500,
+            color: "#858585",
+            letterSpacing: "0.02em",
           }}
         >
-          GATEWAY
+          {getBreadcrumbTitle(activeTab)}
         </span>
+        <span style={{ color: "#36353C", fontSize: "0.75rem" }}>/</span>
         <span
-          className="code-pill"
           style={{
             fontSize: "0.6875rem",
-            color: "#059669",
-            borderColor: "rgba(16, 185, 129, 0.25)",
-            background: "#ecfdf5",
+            color: "#10B981",
+            background: "rgba(16, 185, 129, 0.12)",
+            border: "1px solid rgba(16, 185, 129, 0.25)",
+            padding: "2px 7px",
             borderRadius: "6px",
-            fontWeight: 600,
-          }}
-        >
-          v0.1
-        </span>
-      </div>
-
-      {/* ── Center: Search pill matching reference image ── */}
-      <div
-        style={{
-          flex: "1 1 340px",
-          maxWidth: "460px",
-          minWidth: "200px",
-          display: "flex",
-          alignItems: "center",
-          background: "#f8fafc",
-          border: "1px solid #e2e8f0",
-          borderRadius: "24px",
-          padding: "6px 14px",
-          gap: "8px",
-          transition: "border-color 0.15s ease, background 0.15s ease",
-        }}
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          type="text"
-          placeholder="Search policies, apps, users..."
-          style={{
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            fontSize: "0.8125rem",
-            color: "#0f172a",
-            width: "100%",
-            padding: 0,
-            boxShadow: "none",
-          }}
-        />
-        <span
-          style={{
-            fontSize: "0.625rem",
             fontFamily: "var(--font-mono)",
-            color: "#94a3b8",
-            background: "#ffffff",
-            border: "1px solid #e2e8f0",
-            padding: "2px 6px",
-            borderRadius: "4px",
             fontWeight: 600,
-            whiteSpace: "nowrap",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
           }}
         >
-          Ctrl K
+          Live Gateway
         </span>
       </div>
 
-      {/* ── Right: tenant selector + kill switch + notifications + profile ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
-
-        {/* Tenant selector */}
+      {/* ── Right Utility Cluster matching Reference ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        {/* Tenant Selector Dropdown Capsule */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
+            background: "#151418",
+            border: "1px solid #262529",
+            borderRadius: "20px",
+            padding: "4px 10px 4px 12px",
             gap: "6px",
           }}
         >
-          <label
-            htmlFor="tenant-selector"
+          <span style={{ fontSize: "0.6875rem", color: "#858585", textTransform: "uppercase", fontFamily: "var(--font-mono)", fontWeight: 600 }}>
+            Scope:
+          </span>
+          <select
+            id="tenant-selector"
+            value={selectedTenant}
+            onChange={(e) => setSelectedTenant(e.target.value)}
             style={{
-              fontSize: "0.6875rem",
-              color: "#64748b",
-              fontFamily: "var(--font-mono)",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              whiteSpace: "nowrap",
-              fontWeight: 600,
+              background: "transparent",
+              color: "#F5F5F5",
+              border: "none",
+              outline: "none",
+              fontSize: "0.75rem",
+              fontWeight: 500,
+              cursor: "pointer",
+              paddingRight: "6px",
             }}
           >
-            TENANT
-          </label>
-
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <select
-              id="tenant-selector"
-              value={selectedTenant}
-              onChange={(e) => setSelectedTenant(e.target.value)}
-              style={{
-                appearance: "none",
-                WebkitAppearance: "none",
-                background: "#ffffff",
-                color: "#0f172a",
-                border: "1px solid #e2e8f0",
-                borderRadius: "8px",
-                padding: "5px 28px 5px 10px",
-                fontSize: "0.75rem",
-                fontFamily: "var(--font-family)",
-                outline: "none",
-                cursor: "pointer",
-                minWidth: "150px",
-                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
-                transition: "border-color 0.15s ease",
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}
-            >
-              <option value="">All Tenants (Global)</option>
-              {organizations.map((org) => (
-                <option key={org.id} value={org.id}>
-                  {org.id} — {org.name}
-                </option>
-              ))}
-              {selectedTenant &&
-                !organizations.some((o) => o.id === selectedTenant) && (
-                  <option value={selectedTenant}>{selectedTenant}</option>
-                )}
-            </select>
-            <span
-              style={{
-                position: "absolute",
-                right: "8px",
-                pointerEvents: "none",
-                color: "#64748b",
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              <ChevronIcon />
-            </span>
-          </div>
+            <option value="" style={{ background: "#1C1B1F", color: "#F5F5F5" }}>All Tenants (Global)</option>
+            {organizations.map((org) => (
+              <option key={org.id} value={org.id} style={{ background: "#1C1B1F", color: "#F5F5F5" }}>
+                {org.name} ({org.id})
+              </option>
+            ))}
+            {selectedTenant && !organizations.some((o) => o.id === selectedTenant) && (
+              <option value={selectedTenant} style={{ background: "#1C1B1F", color: "#F5F5F5" }}>{selectedTenant}</option>
+            )}
+          </select>
         </div>
 
-        {/* Emergency Kill Switch (Compact Icon-Only Button) */}
+        {/* Search Capsule Input matching Reference */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            background: "#151418",
+            border: "1px solid #262529",
+            borderRadius: "20px",
+            padding: "6px 14px",
+            gap: "8px",
+            width: "220px",
+            transition: "border-color 0.15s ease, width 0.2s ease",
+          }}
+          onFocus={() => {}}
+        >
+          <span style={{ color: "#858585", display: "flex", alignItems: "center" }}>
+            <SearchIcon />
+          </span>
+          <input
+            type="text"
+            placeholder="Search alerts, agents..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              color: "#F5F5F5",
+              fontSize: "0.75rem",
+              width: "100%",
+              padding: 0,
+              boxShadow: "none",
+            }}
+          />
+        </div>
+
+        {/* Notification Bell with unread dot */}
+        <div
+          style={{
+            position: "relative",
+            width: "36px",
+            height: "36px",
+            borderRadius: "50%",
+            background: "#151418",
+            border: "1px solid #262529",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#858585",
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "#F5F5F5";
+            e.currentTarget.style.borderColor = "#36353C";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "#858585";
+            e.currentTarget.style.borderColor = "#262529";
+          }}
+          title="Security Notifications"
+        >
+          <BellIcon />
+          <span
+            style={{
+              position: "absolute",
+              top: "8px",
+              right: "9px",
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              background: "#FF492F",
+              boxShadow: "0 0 6px #FF492F",
+            }}
+          />
+        </div>
+
+        {/* User Profile Capsule matching Reference: Avatar, Name, Handle, Chevron */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "#151418",
+            border: "1px solid #262529",
+            borderRadius: "24px",
+            padding: "3px 10px 3px 4px",
+            cursor: "pointer",
+            transition: "border-color 0.15s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "#36353C";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "#262529";
+          }}
+        >
+          {/* Avatar circle */}
+          <div
+            style={{
+              width: "28px",
+              height: "28px",
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #FF492F 0%, #8955FF 100%)",
+              color: "#FFFFFF",
+              fontSize: "0.6875rem",
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            BN
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#F5F5F5" }}>
+              Security Admin
+            </span>
+            <span style={{ fontSize: "0.625rem", color: "#858585" }}>
+              @soc.defense
+            </span>
+          </div>
+          <span style={{ color: "#858585", display: "flex", alignItems: "center", marginLeft: "2px" }}>
+            <ChevronDownIcon />
+          </span>
+        </div>
+
+        {/* Emergency Kill Switch */}
         <button
           id="btn-emergency-kill-switch"
           onClick={onTriggerKillSwitch}
@@ -258,88 +315,29 @@ export const Header: React.FC<HeaderProps> = ({
             justifyContent: "center",
             width: "36px",
             height: "36px",
-            borderRadius: "8px",
-            border: `1px solid ${isKilled ? "#dc2626" : "rgba(239, 68, 68, 0.35)"}`,
-            background: isKilled ? "#dc2626" : "#fef2f2",
-            color: isKilled ? "#ffffff" : "#dc2626",
+            borderRadius: "12px",
+            border: `1px solid ${isKilled ? "#FF492F" : "rgba(255, 73, 47, 0.3)"}`,
+            background: isKilled ? "#FF492F" : "rgba(255, 73, 47, 0.12)",
+            color: isKilled ? "#FFFFFF" : "#FF5D45",
             cursor: "pointer",
-            boxShadow: isKilled ? "0 0 10px rgba(220, 38, 38, 0.4)" : "0 1px 2px rgba(0, 0, 0, 0.02)",
+            boxShadow: isKilled ? "0 0 14px rgba(255, 73, 47, 0.5)" : "none",
             transition: "all 0.15s ease",
-            flexShrink: 0,
           }}
-          title={isKilled ? "Emergency Kill Switch Engaged (Click to Deactivate)" : "Emergency Kill Switch (Click to Freeze All Agents)"}
-          aria-label={isKilled ? "Emergency Kill Switch Engaged" : "Emergency Kill Switch"}
-          aria-pressed={isKilled}
+          title={isKilled ? "KILL SWITCH ACTIVE: Click to Resume Agents" : "EMERGENCY FREEZE: Suspend All Agents"}
+          aria-label="Emergency Kill Switch"
         >
           <PowerIcon />
         </button>
 
-        {/* Notification Bell */}
-        <div
-          style={{
-            position: "relative",
-            width: "36px",
-            height: "36px",
-            borderRadius: "50%",
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#64748b",
-          }}
-          title="Notifications"
+        {/* "Check Alerts" button matching Reference! */}
+        <button
+          id="btn-check-alerts"
+          className="btn-check-alerts"
+          onClick={onCheckAlerts}
+          title="Inspect Security Alerts & Interceptions"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-        </div>
-
-        {/* User profile capsule */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "9px",
-            padding: "3px 10px 3px 4px",
-            background: "#ffffff",
-            border: "1px solid #e2e8f0",
-            borderRadius: "24px",
-            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",
-            cursor: "pointer",
-          }}
-        >
-          <div
-            style={{
-              width: "30px",
-              height: "30px",
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
-              color: "#ffffff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            SO
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#0f172a", whiteSpace: "nowrap" }}>
-              Security Officer
-            </span>
-            <span style={{ fontSize: "0.625rem", color: "#64748b", marginTop: "1px" }}>
-              Admin
-            </span>
-          </div>
-          <span style={{ color: "#94a3b8", display: "flex", alignItems: "center", marginLeft: "2px" }}>
-            <ChevronIcon />
-          </span>
-        </div>
+          Check Alerts
+        </button>
       </div>
     </header>
   );

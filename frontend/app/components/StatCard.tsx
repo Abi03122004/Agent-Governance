@@ -1,35 +1,17 @@
 "use client";
 
-import React, { useId } from "react";
+import React from "react";
 
 interface StatCardProps {
   id: string;
   title: string;
   value: string | number;
-  subtitle: string;
+  subtitle?: string;
   icon: React.ReactNode;
-  accentColor?: string;
-  trend?: string;
+  badge?: string;
+  badgeType?: "default" | "success" | "warning" | "danger" | "purple";
+  onClick?: () => void;
 }
-
-const resolvePastelTheme = (color: string) => {
-  if (color.includes("allow") || color.includes("059669") || color.includes("10b981")) {
-    return { bg: "#ecfdf5", border: "#d1fae5", text: "#059669", spark: "#10b981" };
-  }
-  if (color.includes("block") || color.includes("danger") || color.includes("dc2626") || color.includes("ef4444")) {
-    return { bg: "#fef2f2", border: "#fee2e2", text: "#dc2626", spark: "#ef4444" };
-  }
-  if (color.includes("approval") || color.includes("warning") || color.includes("d97706") || color.includes("f59e0b")) {
-    return { bg: "#fffbeb", border: "#fef3c7", text: "#d97706", spark: "#f59e0b" };
-  }
-  if (color.includes("suspend") || color.includes("ea580c") || color.includes("f97316")) {
-    return { bg: "#fff7ed", border: "#ffedd5", text: "#ea580c", spark: "#f97316" };
-  }
-  if (color.includes("purple") || color.includes("7c3aed")) {
-    return { bg: "#f5f3ff", border: "#ede9fe", text: "#7c3aed", spark: "#8b5cf6" };
-  }
-  return { bg: "#eff6ff", border: "#dbeafe", text: "#2563eb", spark: "#2563eb" };
-};
 
 export const StatCard: React.FC<StatCardProps> = ({
   id,
@@ -37,157 +19,145 @@ export const StatCard: React.FC<StatCardProps> = ({
   value,
   subtitle,
   icon,
-  accentColor = "#2563eb",
-  trend,
+  badge,
+  badgeType = "default",
+  onClick,
 }) => {
-  const theme = resolvePastelTheme(accentColor);
-  const reactId = useId();
-  const gradId = `spark-grad-${reactId.replace(/:/g, "")}`;
-  const isPositive = !trend || trend.startsWith("+");
+  const getBadgeStyle = () => {
+    switch (badgeType) {
+      case "success":
+        return {
+          background: "rgba(16, 185, 129, 0.12)",
+          color: "#10B981",
+          border: "1px solid rgba(16, 185, 129, 0.25)",
+        };
+      case "danger":
+        return {
+          background: "rgba(255, 73, 47, 0.14)",
+          color: "#FF492F",
+          border: "1px solid rgba(255, 73, 47, 0.3)",
+        };
+      case "warning":
+        return {
+          background: "rgba(255, 152, 0, 0.12)",
+          color: "#FFA726",
+          border: "1px solid rgba(255, 152, 0, 0.3)",
+        };
+      case "purple":
+        return {
+          background: "rgba(137, 85, 255, 0.14)",
+          color: "#A78BFA",
+          border: "1px solid rgba(137, 85, 255, 0.3)",
+        };
+      default:
+        return {
+          background: "#242328",
+          color: "#A1A1A8",
+          border: "1px solid #333238",
+        };
+    }
+  };
+
+  const badgeStyle = getBadgeStyle();
 
   return (
     <div
       id={id}
+      onClick={onClick}
       style={{
-        background: "#ffffff",
-        border: "1px solid #eef2f6",
-        borderRadius: "16px",
-        padding: "18px 20px",
+        background: "#18171B",
+        border: "1px solid #262529",
+        borderRadius: "18px",
+        padding: "16px 18px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        minHeight: "128px",
-        boxShadow: "0 2px 8px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)",
+        minHeight: "100px",
+        boxShadow: "0 4px 18px rgba(0, 0, 0, 0.35)",
         transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
         position: "relative",
-        overflow: "hidden",
+        cursor: onClick ? "pointer" : "default",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(37, 99, 235, 0.25)";
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 24px rgba(15, 23, 42, 0.08)";
+        e.currentTarget.style.borderColor = "rgba(255, 73, 47, 0.35)";
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 73, 47, 0.1)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "#eef2f6";
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 8px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)";
+        e.currentTarget.style.borderColor = "#262529";
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "0 4px 18px rgba(0, 0, 0, 0.35)";
       }}
     >
-      {/* Top row: Squircle icon + Title */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      {/* Top Row: Icon + Title */}
+      <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
         <div
           style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "12px",
-            background: theme.bg,
-            border: `1px solid ${theme.border}`,
+            color: "#858585",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            flexShrink: 0,
-            color: theme.text,
-            fontSize: "1.1rem",
           }}
         >
           {icon}
         </div>
         <span
           style={{
-            fontSize: "0.8125rem",
+            fontSize: "0.75rem",
             fontWeight: 500,
-            color: "#64748b",
+            color: "#858585",
             letterSpacing: "-0.01em",
-            lineHeight: 1.3,
           }}
         >
           {title}
         </span>
       </div>
 
-      {/* Middle row: Big Value + Trend + SVG Sparkline curve */}
+      {/* Bottom Row: Big Bold Stat + Badge */}
       <div
         style={{
           display: "flex",
-          alignItems: "flex-end",
+          alignItems: "baseline",
           justifyContent: "space-between",
           marginTop: "12px",
           gap: "8px",
         }}
       >
-        <div>
-          <div
+        <span
+          style={{
+            fontSize: "1.65rem",
+            fontWeight: 700,
+            color: "#F5F5F5",
+            fontFamily: "var(--font-family)",
+            letterSpacing: "-0.03em",
+            lineHeight: 1.1,
+          }}
+        >
+          {typeof value === "number" ? value.toLocaleString() : value}
+        </span>
+
+        {badge && (
+          <span
             style={{
-              fontSize: "1.875rem",
-              fontWeight: 700,
-              color: "#0f172a",
-              letterSpacing: "-0.03em",
-              lineHeight: 1,
+              padding: "2px 8px",
+              borderRadius: "12px",
+              fontSize: "0.6875rem",
+              fontWeight: 600,
+              fontFamily: "var(--font-mono)",
+              lineHeight: 1.4,
+              ...badgeStyle,
             }}
           >
-            {value}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px" }}>
-            {trend && (
-              <span
-                style={{
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  color: isPositive ? "#10b981" : "#ef4444",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "3px",
-                }}
-              >
-                <span>{isPositive ? "▲" : "▼"}</span>
-                {trend}
-              </span>
-            )}
-            <span
-              style={{
-                fontSize: "0.6875rem",
-                color: "#94a3b8",
-                lineHeight: 1.2,
-              }}
-            >
-              {subtitle}
-            </span>
-          </div>
-        </div>
-
-        {/* Render sparkline only when there is real non-zero metric activity and trend */}
-        {trend && Number(value) > 0 && (
-          <div style={{ flexShrink: 0, opacity: 0.9 }}>
-            <svg width="78" height="32" viewBox="0 0 78 32" fill="none" style={{ overflow: "visible" }}>
-              <defs>
-                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={theme.spark} stopOpacity="0.25" />
-                  <stop offset="100%" stopColor={theme.spark} stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              <path
-                d={
-                  isPositive
-                    ? "M 2 24 C 20 22, 34 28, 48 12 C 58 2, 68 8, 76 3 L 76 32 L 2 32 Z"
-                    : "M 2 8 C 20 10, 34 6, 48 18 C 58 28, 68 20, 76 26 L 76 32 L 2 32 Z"
-                }
-                fill={`url(#${gradId})`}
-              />
-              <path
-                d={
-                  isPositive
-                    ? "M 2 24 C 20 22, 34 28, 48 12 C 58 2, 68 8, 76 3"
-                    : "M 2 8 C 20 10, 34 6, 48 18 C 58 28, 68 20, 76 26"
-                }
-                stroke={theme.spark}
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
+            {badge}
+          </span>
         )}
       </div>
+
+      {subtitle && (
+        <div style={{ fontSize: "0.6875rem", color: "#5E5E66", marginTop: "4px" }}>
+          {subtitle}
+        </div>
+      )}
     </div>
   );
 };

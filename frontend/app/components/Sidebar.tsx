@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 
 interface SidebarProps {
   activeTab: string;
@@ -10,18 +10,31 @@ interface SidebarProps {
   pendingApprovalsCount?: number;
 }
 
-/* ── Inline SVG icon set matching reference design ── */
-const Icons: Record<string, React.FC<{ size?: number }>> = {
-  Dashboard: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+/* ── Inline Precision SVG Icon Set matching Reference ── */
+const Icons = {
+  Logo: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" />
+      <path d="m9 12 2 2 4-4" />
     </svg>
   ),
-  Agents: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  Dashboard: ({ size = 18 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="2" />
+      <rect x="14" y="3" width="7" height="7" rx="2" />
+      <rect x="3" y="14" width="7" height="7" rx="2" />
+      <rect x="14" y="14" width="7" height="7" rx="2" />
+    </svg>
+  ),
+  Analytics: ({ size = 18 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  ),
+  Agents: ({ size = 18 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="4" y="8" width="16" height="12" rx="3" />
       <path d="M9 13h.01M15 13h.01" strokeWidth="2.5" />
       <path d="M12 4v4M8 4h8" />
@@ -29,298 +42,385 @@ const Icons: Record<string, React.FC<{ size?: number }>> = {
       <circle cx="22" cy="14" r="1" />
     </svg>
   ),
-  Sessions: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4.93 19.07A10 10 0 0 1 4.93 4.93" />
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-      <path d="M8.46 15.54a5 5 0 0 1 0-7.07" />
-      <path d="M15.54 8.47a5 5 0 0 1 0 7.07" />
-      <circle cx="12" cy="12" r="2" fill="currentColor" />
+  Sessions: ({ size = 18 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
     </svg>
   ),
-  Approvals: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  Interception: ({ size = 18 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <polyline points="7 12 10 15 17 9" />
+    </svg>
+  ),
+  Approvals: ({ size = 18 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
       <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
       <path d="m9 14 2 2 4-4" />
     </svg>
   ),
-  RuntimeActivity: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+  Audit: ({ size = 18 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
     </svg>
   ),
-  AuditLog: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  ),
-  Policies: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  ),
-  SystemHealth: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-    </svg>
-  ),
-  Shield: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  Policies: ({ size = 18 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
   ),
-  Lock: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  Settings: ({ size = 18 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  ),
+  Logout: ({ size = 18 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  ),
+  Sun: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  ),
+  Moon: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   ),
 };
 
 const navItems = [
-  { id: "overview",  label: "Dashboard",        Icon: Icons.Dashboard       },
-  { id: "agents",    label: "Agents",            Icon: Icons.Agents          },
-  { id: "sessions",  label: "Sessions",          Icon: Icons.Sessions        },
-  { id: "approvals", label: "Approvals",         Icon: Icons.Approvals       },
-  { id: "activity",  label: "Runtime Activity",  Icon: Icons.RuntimeActivity },
-  { id: "audit",     label: "Audit Log",         Icon: Icons.AuditLog        },
-  { id: "policies",  label: "Policies",          Icon: Icons.Policies        },
-  { id: "health",    label: "System Health",     Icon: Icons.SystemHealth    },
+  { id: "overview",  label: "Dashboard",        Icon: Icons.Dashboard },
+  { id: "activity",  label: "Activity Stream",  Icon: Icons.Analytics },
+  { id: "sessions",  label: "Runtime Sessions", Icon: Icons.Sessions },
+  { id: "interception", label: "Interception Feed", Icon: Icons.Interception },
+  { id: "agents",    label: "Agent Fleet",      Icon: Icons.Agents },
+  { id: "approvals", label: "Approval Queue",   Icon: Icons.Approvals },
+  { id: "audit",     label: "Audit Ledger",     Icon: Icons.Audit },
+  { id: "policies",  label: "Security Policies", Icon: Icons.Policies },
 ] as const;
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
-  activeAgentsCount = 0,
-  blockedCount = 0,
-  pendingApprovalsCount = 0,
 }) => {
+  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
 
   return (
     <aside
       id="sidebar-navigation"
       style={{
-        width: "230px",
-        background: "#0b1329",
-        borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+        width: "78px",
+        background: "#0E0E10",
+        borderRight: "1px solid #1E1D22",
         display: "flex",
         flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "18px 0 16px 0",
         height: "100vh",
         position: "sticky",
         top: 0,
         flexShrink: 0,
-        overflowY: "auto",
+        zIndex: 40,
       }}
     >
-      {/* ── Brand ── */}
-      <div
-        style={{
-          padding: "20px 18px 18px",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-        }}
-      >
-        {/* Monogram badge with glowing dot */}
-        <div
+      {/* ── Top Brand Squircle Icon (Vibrant Orange-Red matching reference) ── */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <button
+          onClick={() => onSelectTab("overview")}
           style={{
-            position: "relative",
-            width: "34px",
-            height: "34px",
-            borderRadius: "10px",
-            background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+            width: "44px",
+            height: "44px",
+            borderRadius: "14px",
+            background: "linear-gradient(135deg, #FF492F 0%, #FF7043 100%)",
             border: "1px solid rgba(255, 255, 255, 0.2)",
-            boxShadow: "0 0 16px rgba(59, 130, 246, 0.4)",
+            boxShadow: "0 0 20px rgba(255, 73, 47, 0.45)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            flexShrink: 0,
-            color: "#ffffff",
+            color: "#FFFFFF",
+            cursor: "pointer",
+            transition: "transform 0.18s ease, box-shadow 0.18s ease",
           }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.05)";
+            e.currentTarget.style.boxShadow = "0 0 26px rgba(255, 73, 47, 0.65)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = "0 0 20px rgba(255, 73, 47, 0.45)";
+          }}
+          title="Autonomous AI Agent Security Gateway"
+          aria-label="Dashboard Home"
         >
-          <Icons.Shield size={18} />
-          <span
-            style={{
-              position: "absolute",
-              bottom: "7px",
-              right: "7px",
-              width: "4px",
-              height: "4px",
-              borderRadius: "50%",
-              background: "#60a5fa",
-              boxShadow: "0 0 6px #60a5fa",
-            }}
-          />
-        </div>
-        <div>
-          <div
-            style={{
-              fontWeight: 700,
-              fontSize: "0.8125rem",
-              letterSpacing: "0.04em",
-              color: "#ffffff",
-              lineHeight: 1.2,
-            }}
-          >
-            AGENT<br />GOVERNANCE
-          </div>
-          <div
-            style={{
-              fontSize: "0.5625rem",
-              color: "#64748b",
-              fontFamily: "var(--font-mono)",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              marginTop: "2px",
-            }}
-          >
-            RUNTIME GATEWAY
-          </div>
-        </div>
+          <span style={{ fontWeight: 800, fontSize: "1.1rem", fontFamily: "var(--font-family)", letterSpacing: "-0.04em" }}>
+            C
+          </span>
+        </button>
       </div>
 
-      {/* ── Workspace label ── */}
-      <div
-        style={{
-          padding: "16px 16px 8px",
-          fontSize: "0.625rem",
-          fontWeight: 600,
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          color: "#64748b",
-          fontFamily: "var(--font-mono)",
-        }}
-      >
-        WORKSPACE
-      </div>
-
-      {/* ── Nav items ── */}
+      {/* ── Middle Nav Dock (Dark Charcoal Capsule with Active Pill Indicator) ── */}
       <nav
         aria-label="Main navigation"
-        style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px", padding: "0 10px" }}
+        style={{
+          background: "#141316",
+          border: "1px solid #222126",
+          borderRadius: "22px",
+          padding: "8px 6px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          alignItems: "center",
+          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.45)",
+        }}
       >
         {navItems.map(({ id, label, Icon }) => {
-          const isActive = activeTab === id;
+          const isActive = activeTab === id || (id === "interception" && activeTab === "activity");
 
           return (
-            <button
-              key={id}
-              id={`nav-${id}`}
-              onClick={() => onSelectTab(id)}
-              aria-current={isActive ? "page" : undefined}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                padding: "9px 12px",
-                borderRadius: "10px",
-                background: isActive ? "#2563eb" : "transparent",
-                color: isActive ? "#ffffff" : "#94a3b8",
-                border: isActive
-                  ? "1px solid #3b82f6"
-                  : "1px solid transparent",
-                boxShadow: isActive ? "0 4px 14px rgba(37, 99, 235, 0.35)" : "none",
-                cursor: "pointer",
-                fontWeight: isActive ? 600 : 500,
-                fontSize: "0.8125rem",
-                textAlign: "left",
-                width: "100%",
-                transition: "all 0.15s ease",
-                gap: "8px",
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(255, 255, 255, 0.06)";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#ffffff";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8";
-                }
-              }}
-            >
-              <span style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
-                <span style={{ flexShrink: 0, opacity: isActive ? 1 : 0.8, color: isActive ? "#ffffff" : "currentColor" }}>
-                  <Icon size={16} />
-                </span>
-                <span
+            <div key={id} style={{ position: "relative" }}>
+              <button
+                id={`nav-${id}`}
+                onClick={() => onSelectTab(id === "interception" ? "activity" : id)}
+                onMouseEnter={() => setHoveredTab(id)}
+                onMouseLeave={() => setHoveredTab(null)}
+                aria-current={isActive ? "page" : undefined}
+                style={{
+                  position: "relative",
+                  width: "42px",
+                  height: "42px",
+                  borderRadius: "14px",
+                  background: isActive ? "#222126" : "transparent",
+                  color: isActive ? "#FFFFFF" : "#858585",
+                  border: isActive ? "1px solid rgba(255, 255, 255, 0.12)" : "1px solid transparent",
+                  boxShadow: isActive ? "0 4px 14px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.08)" : "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.18s ease",
+                }}
+              >
+                <Icon size={19} />
+
+                {/* Active Indicator Accent Dot */}
+                {isActive && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      bottom: "5px",
+                      width: "4px",
+                      height: "4px",
+                      borderRadius: "50%",
+                      background: "#FF492F",
+                      boxShadow: "0 0 6px #FF492F",
+                    }}
+                  />
+                )}
+              </button>
+
+              {/* Tooltip on Hover */}
+              {hoveredTab === id && (
+                <div
                   style={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
+                    position: "absolute",
+                    left: "54px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "#1C1B1F",
+                    border: "1px solid #333238",
+                    color: "#F5F5F5",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    padding: "5px 11px",
+                    borderRadius: "8px",
                     whiteSpace: "nowrap",
+                    boxShadow: "0 6px 18px rgba(0, 0, 0, 0.6)",
+                    zIndex: 100,
+                    pointerEvents: "none",
                   }}
                 >
                   {label}
-                </span>
-              </span>
-            </button>
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
 
-      {/* ── Bottom status card ── */}
+      {/* ── Bottom Controls: Settings, Purge/Logout & Dark/Light Switch ── */}
       <div
         style={{
-          margin: "12px 10px 18px",
-          background: "linear-gradient(180deg, #17243b 0%, #0f182c 100%)",
-          border: "1px solid rgba(59, 130, 246, 0.25)",
-          borderRadius: "14px",
-          padding: "16px 14px",
           display: "flex",
           flexDirection: "column",
-          gap: "8px",
-          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.2)",
+          gap: "10px",
+          alignItems: "center",
         }}
       >
+        {/* Settings Button */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => onSelectTab("health")}
+            onMouseEnter={() => setHoveredTab("settings")}
+            onMouseLeave={() => setHoveredTab(null)}
+            style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "12px",
+              background: activeTab === "health" ? "#222126" : "transparent",
+              color: activeTab === "health" ? "#FFFFFF" : "#858585",
+              border: activeTab === "health" ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid transparent",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.15s ease",
+            }}
+            title="System Settings & Readiness"
+          >
+            <Icons.Settings size={18} />
+          </button>
+          {hoveredTab === "settings" && (
+            <div
+              style={{
+                position: "absolute",
+                left: "50px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "#1C1B1F",
+                border: "1px solid #333238",
+                color: "#F5F5F5",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                padding: "5px 11px",
+                borderRadius: "8px",
+                whiteSpace: "nowrap",
+                zIndex: 100,
+                pointerEvents: "none",
+              }}
+            >
+              Settings &amp; Readiness
+            </div>
+          )}
+        </div>
+
+        {/* Audit / Switch Button */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => onSelectTab("audit")}
+            onMouseEnter={() => setHoveredTab("audit_quick")}
+            onMouseLeave={() => setHoveredTab(null)}
+            style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "12px",
+              background: "transparent",
+              color: "#858585",
+              border: "1px solid transparent",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.15s ease",
+            }}
+            title="Cryptographic Audit Trail"
+          >
+            <Icons.Logout size={18} />
+          </button>
+          {hoveredTab === "audit_quick" && (
+            <div
+              style={{
+                position: "absolute",
+                left: "50px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "#1C1B1F",
+                border: "1px solid #333238",
+                color: "#F5F5F5",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                padding: "5px 11px",
+                borderRadius: "8px",
+                whiteSpace: "nowrap",
+                zIndex: 100,
+                pointerEvents: "none",
+              }}
+            >
+              Audit Trail
+            </div>
+          )}
+        </div>
+
+        {/* Dark / Light Toggle Pill matching reference image */}
         <div
           style={{
+            background: "#141316",
+            border: "1px solid #222126",
+            borderRadius: "16px",
+            padding: "4px 3px",
             display: "flex",
+            flexDirection: "column",
+            gap: "4px",
             alignItems: "center",
-            gap: "8px",
-            color: "#38bdf8",
           }}
         >
           <div
             style={{
               width: "28px",
               height: "28px",
-              borderRadius: "8px",
-              background: "rgba(56, 189, 248, 0.15)",
-              border: "1px solid rgba(56, 189, 248, 0.3)",
+              borderRadius: "10px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#38bdf8",
+              color: "#858585",
+              cursor: "pointer",
             }}
+            title="Light Mode (Cybersecurity SOC Dark Default)"
           >
-            <Icons.Lock size={14} />
+            <Icons.Sun />
           </div>
-          <span
+          <div
             style={{
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              fontFamily: "var(--font-mono)",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              color: "#ffffff",
+              width: "28px",
+              height: "28px",
+              borderRadius: "10px",
+              background: "#222126",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#FFFFFF",
+              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.4)",
             }}
+            title="Dark SOC Mode (Active)"
           >
-            PRE-EXECUTION GATE
-          </span>
-        </div>
-        <div
-          style={{
-            color: "#94a3b8",
-            fontSize: "0.6875rem",
-            lineHeight: "1.45",
-          }}
-        >
-          Every tool call is checked against deterministic policy before execution.
+            <Icons.Moon />
+          </div>
         </div>
       </div>
     </aside>

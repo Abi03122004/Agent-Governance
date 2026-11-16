@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { api } from "../../lib/api";
 import { HumanPurgeModal } from "./HumanPurgeModal";
 
@@ -22,16 +22,15 @@ export interface AuditEventItem {
   details?: Record<string, unknown>;
 }
 
-/* ── SVG icons ── */
 const ShieldCheckIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M8 1.5L13.5 4v4.5c0 3-2.5 5-5.5 5.5C5 13.5 2.5 11.5 2.5 8.5V4L8 1.5Z" />
     <polyline points="5.5,8 7,9.5 10.5,6" />
   </svg>
 );
 
 const RefreshIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M13.5 8a5.5 5.5 0 1 1-1.4-3.7" />
     <polyline points="14,2 13.5,6 9.5,5.5" />
   </svg>
@@ -80,38 +79,32 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
     return Array.from(map.values());
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.getAuditEvents(100, tenantId);
       if (Array.isArray(res)) setEvents(processAuditEvents(res));
     } catch (e) {
-      console.error("Failed to load audit events", e);
+      console.warn("Failed to load audit events (retrying gracefully)", e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [tenantId]);
 
   const handleClearAuditLogs = async (rationale: string) => {
-    const res = await api.clearAuditLogs(tenantId, rationale);
-    setPurgeMessage(res.message);
-    setVerificationResult(null);
-    await handleRefresh();
+    try {
+      const res = await api.clearAuditLogs(tenantId, rationale);
+      setPurgeMessage(res.message);
+      setVerificationResult(null);
+      await handleRefresh();
+    } catch (err: unknown) {
+      console.error("Failed to clear audit logs", err);
+    }
   };
 
   useEffect(() => {
-    let active = true;
-    const fetchAudit = async () => {
-      try {
-        const res = await api.getAuditEvents(100, tenantId);
-        if (active && Array.isArray(res)) setEvents(processAuditEvents(res));
-      } catch (e) {
-        console.error("Failed to load audit events", e);
-      }
-    };
-    void fetchAudit();
-    return () => { active = false; };
-  }, [tenantId]);
+    void handleRefresh();
+  }, [handleRefresh]);
 
   const verifyChain = async () => {
     try {
@@ -131,8 +124,17 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
   };
 
   return (
-    <section id="audit-ledger-section" className="glass-panel" style={{ padding: "18px 20px" }}>
-      {/* ── Panel header ── */}
+    <section
+      id="audit-ledger-section"
+      className="glass-panel"
+      style={{
+        padding: "20px 22px",
+        background: "#18171B",
+        border: "1px solid #262529",
+        borderRadius: "20px",
+      }}
+    >
+      {/* ── Panel Header ── */}
       <div
         style={{
           display: "flex",
@@ -145,9 +147,25 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
       >
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <h2 className="panel-title">Immutable Cryptographic Audit Ledger</h2>
+            <h2 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "#F5F5F5", margin: 0 }}>
+              Immutable Cryptographic Audit Ledger
+            </h2>
+            <span
+              style={{
+                fontSize: "0.625rem",
+                color: "#10B981",
+                background: "rgba(16, 185, 129, 0.12)",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+                padding: "2px 8px",
+                borderRadius: "10px",
+                fontFamily: "var(--font-mono)",
+                fontWeight: 700,
+              }}
+            >
+              SHA-256 CHAINED
+            </span>
           </div>
-          <p className="panel-subtitle" style={{ marginTop: "4px" }}>
+          <p style={{ fontSize: "0.75rem", color: "#858585", marginTop: "4px" }}>
             Every lifecycle event, policy evaluation, and tool execution is hashed and cryptographically
             linked to the previous block.
           </p>
@@ -159,7 +177,7 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
             className="btn btn-primary"
             onClick={verifyChain}
             disabled={verifying}
-            style={{ fontSize: "0.75rem", padding: "5px 12px" }}
+            style={{ fontSize: "0.75rem", padding: "6px 14px", borderRadius: "8px" }}
           >
             <ShieldCheckIcon />
             {verifying ? "Verifying…" : "Verify Ledger Chain"}
@@ -168,7 +186,7 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
             className="btn btn-ghost"
             onClick={handleRefresh}
             disabled={loading}
-            style={{ fontSize: "0.75rem", padding: "5px 10px" }}
+            style={{ fontSize: "0.75rem", padding: "6px 12px", borderRadius: "8px" }}
           >
             <RefreshIcon /> Refresh
           </button>
@@ -176,7 +194,7 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
             id="btn-clear-audit-logs"
             className="btn btn-danger"
             onClick={() => setIsClearModalOpen(true)}
-            style={{ fontSize: "0.75rem", padding: "5px 12px" }}
+            style={{ fontSize: "0.75rem", padding: "6px 12px", borderRadius: "8px" }}
             title="Human Operator only: Clear and re-initialize audit ledger"
           >
             Clear Audit Logs
@@ -185,23 +203,46 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
       </div>
 
       {purgeMessage && (
-        <div className="alert alert-success" style={{ marginBottom: "14px" }}>
+        <div
+          style={{
+            padding: "8px 14px",
+            background: "rgba(16, 185, 129, 0.12)",
+            border: "1px solid rgba(16, 185, 129, 0.3)",
+            color: "#10B981",
+            borderRadius: "8px",
+            fontSize: "0.75rem",
+            marginBottom: "14px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <span>✓ {purgeMessage}</span>
           <button
             onClick={() => setPurgeMessage(null)}
-            style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", marginLeft: "auto" }}
+            style={{ background: "none", border: "none", color: "inherit", cursor: "pointer" }}
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* ── Verification result banner ── */}
+      {/* ── Verification Result Banner ── */}
       {verificationResult && (
         <div
           id="verification-result-banner"
-          className={`alert ${verificationResult.verified ? "alert-success" : "alert-danger"}`}
-          style={{ marginBottom: "14px", justifyContent: "space-between" }}
+          style={{
+            padding: "10px 16px",
+            borderRadius: "10px",
+            fontSize: "0.8125rem",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: verificationResult.verified ? "rgba(16, 185, 129, 0.12)" : "rgba(255, 73, 47, 0.14)",
+            border: `1px solid ${verificationResult.verified ? "rgba(16, 185, 129, 0.35)" : "rgba(255, 73, 47, 0.45)"}`,
+            color: verificationResult.verified ? "#10B981" : "#FF492F",
+          }}
         >
           <span>
             <strong>
@@ -210,20 +251,13 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
             {verificationResult.message ||
               `Chained sequence of ${verificationResult.event_count} events verified with zero tampering.`}
           </span>
-          <span
-            style={{
-              fontSize: "0.6875rem",
-              fontFamily: "var(--font-mono)",
-              flexShrink: 0,
-              opacity: 0.8,
-            }}
-          >
+          <span style={{ fontSize: "0.6875rem", fontFamily: "var(--font-mono)", opacity: 0.8 }}>
             {new Date().toLocaleTimeString()}
           </span>
         </div>
       )}
 
-      {/* ── Table / states ── */}
+      {/* ── Table Content ── */}
       {loading && events.length === 0 ? (
         <div className="empty-state">Loading audit records…</div>
       ) : events.length === 0 ? (
@@ -232,61 +266,52 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
         <div
           style={{
             overflowX: "auto",
-            border: "1px solid var(--border-primary)",
-            borderRadius: "var(--radius-sm)",
+            border: "1px solid #262529",
+            borderRadius: "14px",
           }}
         >
-          <table style={{ fontSize: "0.8125rem", textAlign: "left" }}>
+          <table style={{ fontSize: "0.8125rem", textAlign: "left", width: "100%" }}>
             <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>Event Type</th>
-                <th>Agent / Scope</th>
-                <th>Decision / State</th>
-                <th>SHA-256 Hash</th>
+              <tr style={{ background: "#141316", color: "#858585", borderBottom: "1px solid #262529" }}>
+                <th style={{ padding: "10px 14px" }}>Timestamp</th>
+                <th style={{ padding: "10px 14px" }}>Event Type</th>
+                <th style={{ padding: "10px 14px" }}>Agent / Scope</th>
+                <th style={{ padding: "10px 14px" }}>Decision / State</th>
+                <th style={{ padding: "10px 14px" }}>SHA-256 Hash</th>
               </tr>
             </thead>
             <tbody>
               {events.map((ev, idx) => (
-                <tr key={ev.id ? `${ev.id}-${idx}` : idx}>
+                <tr
+                  key={ev.id ? `${ev.id}-${idx}` : idx}
+                  style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.04)" }}
+                >
                   {/* Timestamp */}
-                  <td>
-                    <span
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        fontSize: "0.725rem",
-                        color: "var(--text-muted)",
-                      }}
-                    >
+                  <td style={{ padding: "12px 14px" }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "#858585" }}>
                       {new Date(ev.timestamp).toLocaleString()}
                     </span>
                   </td>
 
-                  {/* Event type */}
-                  <td>
-                    <span className="code-pill" style={{ color: "var(--info-fg)" }}>
+                  {/* Event Type */}
+                  <td style={{ padding: "12px 14px" }}>
+                    <span className="code-pill">
                       {ev.event_type}
                     </span>
                   </td>
 
-                  {/* Agent / scope */}
-                  <td>
-                    <div style={{ color: "var(--text-primary)", fontWeight: 500 }}>
+                  {/* Agent / Scope */}
+                  <td style={{ padding: "12px 14px" }}>
+                    <div style={{ color: "#F5F5F5", fontWeight: 500 }}>
                       {ev.agent_id || "system"}
                     </div>
-                    <div
-                      style={{
-                        fontSize: "0.6875rem",
-                        color: "var(--text-muted)",
-                        marginTop: "2px",
-                      }}
-                    >
+                    <div style={{ fontSize: "0.6875rem", color: "#858585", marginTop: "2px", fontFamily: "var(--font-mono)" }}>
                       {ev.organization_id} / {ev.project_id}
                     </div>
                   </td>
 
-                  {/* Decision / state */}
-                  <td>
+                  {/* Decision / State */}
+                  <td style={{ padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                       {ev.policy_decision && ev.policy_decision !== "N/A" ? (
                         <span
@@ -303,38 +328,27 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
                           {ev.policy_decision}
                         </span>
                       ) : (
-                        <span
-                          style={{
-                            fontSize: "0.725rem",
-                            color: "var(--text-muted)",
-                            fontFamily: "var(--font-mono)",
-                          }}
-                        >
+                        <span style={{ fontSize: "0.75rem", color: "#5E5E66", fontFamily: "var(--font-mono)" }}>
                           —
                         </span>
                       )}
                       {ev.execution_state && (
-                        <span
-                          style={{
-                            fontSize: "0.725rem",
-                            color: "var(--text-secondary)",
-                            fontFamily: "var(--font-mono)",
-                          }}
-                        >
+                        <span style={{ fontSize: "0.725rem", color: "#A1A1A8", fontFamily: "var(--font-mono)" }}>
                           {ev.execution_state}
                         </span>
                       )}
                     </div>
                   </td>
 
-                  {/* Hash chain */}
-                  <td>
+                  {/* Hash Chain */}
+                  <td style={{ padding: "12px 14px" }}>
                     <div
                       title={`Event Hash: ${ev.event_hash}`}
                       style={{
                         fontFamily: "var(--font-mono)",
-                        fontSize: "0.7rem",
-                        color: "var(--success-fg)",
+                        fontSize: "0.725rem",
+                        color: "#10B981",
+                        fontWeight: 500,
                       }}
                     >
                       {ev.event_hash ? ev.event_hash.slice(0, 20) + "…" : "genesis"}
@@ -343,7 +357,7 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
                       title={`Prev Hash: ${ev.prev_event_hash}`}
                       style={{
                         fontSize: "0.65rem",
-                        color: "var(--text-muted)",
+                        color: "#858585",
                         fontFamily: "var(--font-mono)",
                         marginTop: "2px",
                       }}
@@ -364,7 +378,7 @@ export const AuditLedgerWidget: React.FC<AuditLedgerWidgetProps> = ({ tenantId }
         onClose={() => setIsClearModalOpen(false)}
         title="Clear Cryptographic Audit Ledger"
         targetDescription={tenantId ? `Tenant ${tenantId} Audit Events` : "Global Audit Events (All Tenants)"}
-        warningNote="Permanently removes all historical audit trail records and re-initializes a fresh cryptographic SHA-256 genesis event. AI agents are blocked from performing this operation."
+        warningNote="Permanently removes all historical audit trail records and re-initializes a fresh cryptographic SHA-256 genesis event. Autonomous agents cannot perform this."
         actionButtonText="Authorize & Clear Audit Ledger"
         onConfirm={handleClearAuditLogs}
       />

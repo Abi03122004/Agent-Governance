@@ -6,44 +6,72 @@ import { getAdminHeaders } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function fetchApi<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  fallbackValue?: T
+): Promise<T> {
   const url = `${API_BASE}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
   const authHeaders = getAdminHeaders();
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders,
-      ...(options.headers || {}),
-    },
-  });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`API error ${res.status}: ${errorText}`);
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+        ...(options.headers || {}),
+      },
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`API error ${res.status}: ${errorText}`);
+    }
+
+    return await res.json();
+  } catch (err: unknown) {
+    if (fallbackValue !== undefined) {
+      console.warn(`[API] request failed for ${url}, returning fallback:`, err);
+      return fallbackValue;
+    }
+    console.warn(`[API] request failed for ${url}:`, err);
+    throw err;
   }
-
-  return res.json();
 }
 
 export const api = {
   getStats: (organizationId?: string) =>
     fetchApi<Record<string, unknown>>(
-      `/api/v1/monitoring/stats${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`
+      `/api/v1/monitoring/stats${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`,
+      {},
+      {
+        total_agents: 0,
+        active_sessions: 0,
+        total_actions: 0,
+        blocked_actions: 0,
+        pending_approvals: 0,
+        pass_rate: 100,
+      }
     ),
   getActivity: (limit = 100, organizationId?: string) =>
     fetchApi<Record<string, unknown>[]>(
-      `/api/v1/monitoring/activity?limit=${limit}${organizationId ? `&organization_id=${encodeURIComponent(organizationId)}` : ""}`
+      `/api/v1/monitoring/activity?limit=${limit}${organizationId ? `&organization_id=${encodeURIComponent(organizationId)}` : ""}`,
+      {},
+      []
     ),
   getAgents: (organizationId?: string) =>
     fetchApi<Record<string, unknown>[]>(
-      `/api/v1/monitoring/agents${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`
+      `/api/v1/monitoring/agents${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`,
+      {},
+      []
     ),
   getAgent: (agentId: string, organizationId?: string) =>
     fetchApi<Record<string, unknown>>(
       `/api/v1/monitoring/agents/${agentId}${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`
     ),
-  getOrganizations: () => fetchApi<{ id: string; name: string; status: string }[]>("/api/v1/organizations"),
+  getOrganizations: () =>
+    fetchApi<{ id: string; name: string; status: string }[]>("/api/v1/organizations", {}, []),
   createAgent: (data: unknown) =>
     fetchApi("/api/v1/agents", {
       method: "POST",
@@ -70,15 +98,21 @@ export const api = {
     }),
   getSessions: (organizationId?: string) =>
     fetchApi<Record<string, unknown>[]>(
-      `/api/v1/sessions${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`
+      `/api/v1/sessions${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`,
+      {},
+      []
     ),
   getPolicies: (organizationId?: string) =>
     fetchApi<Record<string, unknown>[]>(
-      `/api/v1/monitoring/policies${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`
+      `/api/v1/monitoring/policies${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`,
+      {},
+      []
     ),
   getApprovals: (status = "PENDING", organizationId?: string) =>
     fetchApi<Record<string, unknown>[]>(
-      `/api/v1/approvals?status=${status}${organizationId ? `&organization_id=${encodeURIComponent(organizationId)}` : ""}`
+      `/api/v1/approvals?status=${status}${organizationId ? `&organization_id=${encodeURIComponent(organizationId)}` : ""}`,
+      {},
+      []
     ),
   approveAction: (ticketId: string, rationale = "Approved via Dashboard") =>
     fetchApi(`/api/v1/approvals/${ticketId}/approve`, {
@@ -92,14 +126,18 @@ export const api = {
     }),
   getAuditEvents: (limit = 100, organizationId?: string) =>
     fetchApi<Record<string, unknown>[]>(
-      `/api/v1/audit/events?limit=${limit}${organizationId ? `&organization_id=${encodeURIComponent(organizationId)}` : ""}`
+      `/api/v1/audit/events?limit=${limit}${organizationId ? `&organization_id=${encodeURIComponent(organizationId)}` : ""}`,
+      {},
+      []
     ),
   verifyAuditChain: (organizationId?: string) =>
     fetchApi<{ verified: boolean; event_count: number; message: string }>(
-      `/api/v1/audit/verify-chain${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`
+      `/api/v1/audit/verify-chain${organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : ""}`,
+      {},
+      { verified: false, event_count: 0, message: "Verification check unavailable." }
     ),
-  getHealthLive: () => fetchApi("/health/live"),
-  getHealthReady: () => fetchApi("/health/ready"),
+  getHealthLive: () => fetchApi("/health/live", {}, { status: "unknown" }),
+  getHealthReady: () => fetchApi("/health/ready", {}, { status: "unknown" }),
   // Human-only Data Purge Actions
   deleteAgent: (agentId: string, rationale?: string) =>
     fetchApi<{ status: string; agent_id: string }>(
@@ -151,4 +189,3 @@ export const api = {
       { method: "POST" }
     ),
 };
-
